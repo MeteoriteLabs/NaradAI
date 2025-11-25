@@ -1,18 +1,187 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
+// Agents table
+export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  name: text("name").notNull(),
+  persona: text("persona"),
+  voiceStyle: text("voice_style").default("alloy"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+// Knowledge items table
+export const knowledgeItems = pgTable("knowledge_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// Event tags table
+export const eventTags = pgTable("event_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  selector: text("selector").notNull(),
+  eventType: text("event_type").notNull(), // "view" | "click" | "scroll" | "custom"
+  pagePattern: text("page_pattern"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Flows table
+export const flows = pgTable("flows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  pageUrl: text("page_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Steps table
+export const steps = pgTable("steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flowId: varchar("flow_id").notNull().references(() => flows.id, { onDelete: "cascade" }),
+  selector: text("selector").notNull(),
+  title: text("title").notNull(),
+  tooltipText: text("tooltip_text"),
+  voiceScript: text("voice_script"),
+  order: integer("order").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Leads table
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  context: jsonb("context"), // Store URL, tags, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Conversations/Analytics table
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  transcript: jsonb("transcript").notNull(), // Array of {role, text, timestamp}
+  context: jsonb("context"), // URL, tags, etc.
+  flowsTriggered: text("flows_triggered").array(),
+  leadCaptured: boolean("lead_captured").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const agentsRelations = relations(agents, ({ many }) => ({
+  knowledgeItems: many(knowledgeItems),
+  eventTags: many(eventTags),
+  flows: many(flows),
+  leads: many(leads),
+  conversations: many(conversations),
+}));
+
+export const knowledgeItemsRelations = relations(knowledgeItems, ({ one }) => ({
+  agent: one(agents, {
+    fields: [knowledgeItems.agentId],
+    references: [agents.id],
+  }),
+}));
+
+export const eventTagsRelations = relations(eventTags, ({ one }) => ({
+  agent: one(agents, {
+    fields: [eventTags.agentId],
+    references: [agents.id],
+  }),
+}));
+
+export const flowsRelations = relations(flows, ({ one, many }) => ({
+  agent: one(agents, {
+    fields: [flows.agentId],
+    references: [agents.id],
+  }),
+  steps: many(steps),
+}));
+
+export const stepsRelations = relations(steps, ({ one }) => ({
+  flow: one(flows, {
+    fields: [steps.flowId],
+    references: [flows.id],
+  }),
+}));
+
+export const leadsRelations = relations(leads, ({ one }) => ({
+  agent: one(agents, {
+    fields: [leads.agentId],
+    references: [agents.id],
+  }),
+}));
+
+export const conversationsRelations = relations(conversations, ({ one }) => ({
+  agent: one(agents, {
+    fields: [conversations.agentId],
+    references: [agents.id],
+  }),
+}));
+
+// Insert schemas
+export const insertAgentSchema = createInsertSchema(agents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertKnowledgeItemSchema = createInsertSchema(knowledgeItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEventTagSchema = createInsertSchema(eventTags).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFlowSchema = createInsertSchema(flows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStepSchema = createInsertSchema(steps).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type Agent = typeof agents.$inferSelect;
+export type InsertAgent = z.infer<typeof insertAgentSchema>;
+
+export type KnowledgeItem = typeof knowledgeItems.$inferSelect;
+export type InsertKnowledgeItem = z.infer<typeof insertKnowledgeItemSchema>;
+
+export type EventTag = typeof eventTags.$inferSelect;
+export type InsertEventTag = z.infer<typeof insertEventTagSchema>;
+
+export type Flow = typeof flows.$inferSelect;
+export type InsertFlow = z.infer<typeof insertFlowSchema>;
+
+export type Step = typeof steps.$inferSelect;
+export type InsertStep = z.infer<typeof insertStepSchema>;
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
