@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -70,10 +70,25 @@ export default function FlowsPage() {
       title: "",
       tooltip_text: "",
       voice_script: "",
-      order: (steps?.length || 0) + 1,
-      flow_id: selectedFlowId,
+      order: 1,
+      flow_id: "",
     },
   });
+
+  // Update step form when selected flow or steps change
+  useEffect(() => {
+    if (selectedFlowId) {
+      stepForm.setValue("flow_id", selectedFlowId);
+      stepForm.setValue("order", (steps?.length || 0) + 1);
+    }
+  }, [selectedFlowId, steps, stepForm]);
+
+  // Update flow form when selected agent changes
+  useEffect(() => {
+    if (selectedAgentId) {
+      flowForm.setValue("agent_id", selectedAgentId);
+    }
+  }, [selectedAgentId, flowForm]);
 
   const createFlowMutation = useMutation({
     mutationFn: (data: FlowFormValues) =>
@@ -82,7 +97,11 @@ export default function FlowsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/agents", selectedAgentId, "flows"] });
       setSelectedFlowId(newFlow.id);
       setIsFlowDialogOpen(false);
-      flowForm.reset();
+      flowForm.reset({
+        name: "",
+        page_url: "",
+        agent_id: selectedAgentId,
+      });
       toast({
         title: "Flow created",
         description: "New journey flow has been created.",
@@ -96,7 +115,14 @@ export default function FlowsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flows", selectedFlowId, "steps"] });
       setIsStepDialogOpen(false);
-      stepForm.reset();
+      stepForm.reset({
+        selector: "",
+        title: "",
+        tooltip_text: "",
+        voice_script: "",
+        order: (steps?.length || 0) + 2,
+        flow_id: selectedFlowId,
+      });
       toast({
         title: "Step added",
         description: "New step has been added to the flow.",

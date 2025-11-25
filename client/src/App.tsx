@@ -13,6 +13,7 @@ import EventTagsPage from "@/pages/event-tags";
 import FlowsPage from "@/pages/flows";
 import AnalyticsPage from "@/pages/analytics";
 import LeadsPage from "@/pages/leads";
+import WidgetDemo from "@/pages/widget-demo";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/flows" component={FlowsPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/leads" component={LeadsPage} />
+      <Route path="/widget-demo" component={WidgetDemo} />
       <Route component={NotFound} />
     </Switch>
   );

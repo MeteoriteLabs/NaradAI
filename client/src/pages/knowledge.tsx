@@ -64,7 +64,11 @@ export default function KnowledgePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents", selectedAgentId, "knowledge"] });
       setIsDialogOpen(false);
-      form.reset();
+      form.reset({
+        question: "",
+        answer: "",
+        agent_id: selectedAgentId,
+      });
       toast({
         title: "Knowledge added",
         description: "Q&A pair has been added to the knowledge base.",

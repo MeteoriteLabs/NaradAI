@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -59,9 +59,16 @@ export default function EventTagsPage() {
       selector: "",
       event_type: "view",
       page_pattern: "",
-      agent_id: selectedAgentId,
+      agent_id: "",
     },
   });
+
+  // Update agent_id when selected agent changes
+  useEffect(() => {
+    if (selectedAgentId) {
+      form.setValue("agent_id", selectedAgentId);
+    }
+  }, [selectedAgentId, form]);
 
   const createMutation = useMutation({
     mutationFn: (data: EventTagFormValues) =>
@@ -69,7 +76,13 @@ export default function EventTagsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents", selectedAgentId, "tags"] });
       setIsDialogOpen(false);
-      form.reset();
+      form.reset({
+        label: "",
+        selector: "",
+        event_type: "view",
+        page_pattern: "",
+        agent_id: selectedAgentId,
+      });
       toast({
         title: "Event tag created",
         description: "New event tag has been added successfully.",
