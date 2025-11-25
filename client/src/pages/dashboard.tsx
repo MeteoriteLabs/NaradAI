@@ -95,7 +95,8 @@ export default function Dashboard() {
 
   const copyEmbedCode = () => {
     if (!selectedAgentId) return;
-    const embedCode = `<script src="https://cdn.narada.ai/embed.js" data-agent-id="${selectedAgentId}" async></script>`;
+    const apiBase = window.location.origin;
+    const embedCode = `<script src="https://cdn.narada.ai/embed.js" data-agent-id="${selectedAgentId}" data-api-base="${apiBase}" async></script>`;
     navigator.clipboard.writeText(embedCode);
     toast({
       title: "Copied!",
@@ -276,6 +277,7 @@ export default function Dashboard() {
                       {`<script
   src="https://cdn.narada.ai/embed.js"
   data-agent-id="${selectedAgentId}"
+  data-api-base="${window.location.origin}"
   async>
 </script>`}
                     </pre>
