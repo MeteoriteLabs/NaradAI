@@ -1,7 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { storage } from "./storage";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 const openai = new OpenAI({
@@ -16,6 +16,7 @@ interface WebSocketClient extends WebSocket {
     eventTags?: string[];
   };
   conversationHistory?: ChatCompletionMessageParam[];
+  lastUserMessage?: string;
 }
 
 export function setupWebSocket(server: Server) {
@@ -24,6 +25,7 @@ export function setupWebSocket(server: Server) {
   wss.on("connection", (ws: WebSocketClient) => {
     console.log("New WebSocket connection");
     ws.conversationHistory = [];
+    ws.lastUserMessage = undefined;
 
     ws.on("message", async (data: Buffer) => {
       try {
@@ -129,6 +131,12 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
     role: "assistant",
     content: greeting,
   });
+
+  await storage.createConversation({
+    agentId: ws.agentId,
+    userMessage: "[Widget Connected]",
+    agentResponse: greeting,
+  });
 }
 
 function buildSystemPrompt(
@@ -177,6 +185,8 @@ async function handleChatMessage(ws: WebSocketClient, message: any) {
     return;
   }
 
+  ws.lastUserMessage = message.content;
+
   ws.conversationHistory.push({
     role: "user",
     content: message.content,
@@ -205,56 +215,67 @@ async function processOpenAIResponse(
 
   while (true) {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-3.5-turbo-0125",
       messages: ws.conversationHistory,
-      functions: [
+      tools: [
         {
-          name: "start_flow",
-          description: "Start a guided product tour or walkthrough flow",
-          parameters: {
-            type: "object",
-            properties: {
-              flow_name: {
-                type: "string",
-                description: "Name of the flow to start",
+          type: "function",
+          function: {
+            name: "start_flow",
+            description: "Start a guided product tour or walkthrough flow",
+            parameters: {
+              type: "object",
+              properties: {
+                flow_name: {
+                  type: "string",
+                  description: "Name of the flow to start",
+                },
               },
+              required: ["flow_name"],
             },
-            required: ["flow_name"],
           },
         },
         {
-          name: "capture_lead",
-          description: "Capture user contact information",
-          parameters: {
-            type: "object",
-            properties: {},
+          type: "function",
+          function: {
+            name: "capture_lead",
+            description: "Capture user contact information",
+            parameters: {
+              type: "object",
+              properties: {},
+            },
           },
         },
       ],
-      function_call: "auto",
+      tool_choice: "auto",
     });
 
     const responseMessage = completion.choices[0].message;
 
-    if (responseMessage.function_call) {
+    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
       ws.conversationHistory.push({
         role: "assistant",
-        content: null,
-        function_call: responseMessage.function_call,
+        content: responseMessage.content,
+        tool_calls: responseMessage.tool_calls,
       });
 
-      const functionResult = await executeFunctionCall(
-        ws,
-        responseMessage.function_call,
-        flows,
-        agent
-      );
+      for (const toolCall of responseMessage.tool_calls) {
+        const functionResult = await executeFunctionCall(
+          ws,
+          {
+            name: toolCall.function.name,
+            arguments: toolCall.function.arguments,
+          },
+          flows,
+          agent
+        );
 
-      ws.conversationHistory.push({
-        role: "function",
-        name: responseMessage.function_call.name,
-        content: JSON.stringify(functionResult),
-      });
+        ws.conversationHistory.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(functionResult),
+        });
+      }
 
       continue;
     } else if (responseMessage.content) {
@@ -270,16 +291,13 @@ async function processOpenAIResponse(
         content: responseMessage.content,
       });
 
-      if (ws.agentId && ws.conversationHistory.length > 2) {
-        const userMessages = ws.conversationHistory.filter(
-          (m) => m.role === "user"
-        );
-        const lastUserMessage = userMessages[userMessages.length - 1];
+      if (ws.agentId && ws.lastUserMessage) {
         await storage.createConversation({
           agentId: ws.agentId,
-          userMessage: (lastUserMessage?.content as string) || "",
+          userMessage: ws.lastUserMessage,
           agentResponse: responseMessage.content,
         });
+        ws.lastUserMessage = undefined;
       }
 
       break;
@@ -296,7 +314,16 @@ async function executeFunctionCall(
   agent: any
 ): Promise<any> {
   const functionName = functionCall.name;
-  const args = JSON.parse(functionCall.arguments);
+  let args;
+  
+  try {
+    args = JSON.parse(functionCall.arguments);
+  } catch (error) {
+    return {
+      success: false,
+      message: "Invalid function arguments",
+    };
+  }
 
   switch (functionName) {
     case "start_flow": {
@@ -330,18 +357,10 @@ async function executeFunctionCall(
           })
         );
 
-        if (ws.agentId) {
-          await storage.createConversation({
-            agentId: ws.agentId,
-            userMessage: "Start flow: " + flowName,
-            agentResponse: `Started flow: ${flow.name}`,
-            flowsTriggered: [flow.id],
-          });
-        }
-
         return {
           success: true,
-          message: `Started flow: ${flow.name}`,
+          message: `Successfully started the "${flow.name}" guided tour with ${steps.length} steps. The user can now see the interactive walkthrough.`,
+          flowId: flow.id,
           steps: steps.length,
         };
       } else {
@@ -363,7 +382,7 @@ async function executeFunctionCall(
 
       return {
         success: true,
-        message: "Lead capture form opened",
+        message: "Lead capture form has been displayed to the user. They can now provide their contact information.",
       };
     }
 
@@ -383,8 +402,9 @@ async function handleAudioMessage(ws: WebSocketClient, message: any) {
   try {
     const audioBuffer = Buffer.from(message.audioData, "base64");
     
-    const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
-    const audioFile = new File([audioBlob], "audio.wav", { type: "audio/wav" });
+    const audioFile = await toFile(audioBuffer, "widget-audio.webm", {
+      type: "audio/webm",
+    });
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
@@ -414,7 +434,7 @@ async function handleAudioMessage(ws: WebSocketClient, message: any) {
 }
 
 async function handleLeadCaptured(ws: WebSocketClient, message: any) {
-  if (!ws.agentId) {
+  if (!ws.agentId || !ws.conversationHistory) {
     return;
   }
 
@@ -430,25 +450,42 @@ async function handleLeadCaptured(ws: WebSocketClient, message: any) {
       source: ws.context?.url || "widget",
     });
 
+    const formSubmissionMessage = `[User submitted lead form: Name: ${leadData.name}, Email provided]`;
+    
+    ws.conversationHistory.push({
+      role: "user",
+      content: formSubmissionMessage,
+    });
+
     ws.send(
       JSON.stringify({
         type: "lead_captured_success",
       })
     );
 
+    const confirmationMessage = `Thank you, ${leadData.name}! Your information has been received. We'll get back to you soon!`;
+
     ws.send(
       JSON.stringify({
         type: "message",
-        content: "Thank you! Your information has been received. We'll get back to you soon!",
+        content: confirmationMessage,
       })
     );
 
-    if (ws.conversationHistory) {
-      ws.conversationHistory.push({
-        role: "assistant",
-        content: "Lead information captured successfully.",
-      });
-    }
+    ws.conversationHistory.push({
+      role: "assistant",
+      content: confirmationMessage,
+    });
+
+    const originalUserMessage = ws.lastUserMessage || "User requested to connect";
+    
+    await storage.createConversation({
+      agentId: ws.agentId,
+      userMessage: originalUserMessage,
+      agentResponse: confirmationMessage,
+    });
+    
+    ws.lastUserMessage = undefined;
   } catch (error) {
     console.error("Lead capture error:", error);
     ws.send(
