@@ -1,0 +1,454 @@
+NARADA AI — Complete PRD v3.0
+“The Divine Voice Guide for Digital Journeys”
+0. PRODUCT ONE-LINER
+
+Narada AI is a voice-based website guide that understands user behavior, listens to speech, reads page context, and guides visitors through digital journeys using contextual AI + UI highlights + voice narration — embeddable with one script.
+
+Narada = the cosmic messenger in Indian mythology → perfect metaphor.
+
+1. PRODUCT SUMMARY
+
+Narada AI is a two-part system:
+
+🔹 A) Control Plane (Dashboard)
+
+A React-based web app where businesses:
+
+Create an AI voice agent
+
+Add knowledge (Q&A, later PDFs, crawler)
+
+Define Event Tags (sections/elements to track)
+
+Create Journeys / Guided Flows
+
+Configure voice style
+
+Generate embed snippet
+
+View analytics, transcripts, and leads
+
+🔹 B) Runtime Widget (Embeddable Snippet)
+
+A lightweight script installed on any website:
+
+<script src="https://cdn.narada.ai/embed.js" 
+        data-agent-id="narada_123"
+        async></script>
+
+
+The widget:
+
+Loads <NaradaWidget /> dynamically
+
+Tracks event tags (view, click, scroll, custom)
+
+Collects context
+
+Handles voice input/output
+
+Connects to backend via WebSocket
+
+Receives agent actions (start flow, highlight, etc.)
+
+Runs Joyride for guided steps
+
+Displays responses in voice + bubble UI
+
+2. USE CASES
+
+Auto dealership sites → explain pricing, EMI, book test ride
+
+Real estate → project walkthrough
+
+SaaS → onboarding & product tours
+
+Ecommerce → product selection guidance
+
+Education → course explainer
+
+3. USER FLOWS
+✨ 3.1 Company User (Dashboard)
+
+Sign up / Login
+
+Create Agent (name, persona)
+
+Add Knowledge Q&A
+
+Configure Event Tags
+
+Create Flows/Journeys
+
+Create Steps per flow
+
+Preview the widget
+
+Copy embed code
+
+Paste in their website
+
+View analytics, transcripts, leads
+
+🎤 3.2 Website Visitor
+
+Lands on website
+
+Sees Narada AI floating avatar
+
+Clicks & speaks: “Explain EMI?”
+
+Widget collects:
+
+URL
+
+Tagged events (pricing viewed, EMI clicked, etc.)
+
+Sends transcript + context to backend
+
+Backend using OpenAI Realtime:
+
+Converts speech to text
+
+Does reasoning
+
+Uses tool-calls (start flow, go to step)
+
+Streams back voice
+
+Widget plays voice
+
+Joyride highlights pricing sections
+
+Lead captured if needed
+
+4. FEATURE SET
+🔥 4.1 Embeddable Snippet (GA/Clarity Style)
+Script:
+<script 
+  src="https://cdn.narada.ai/embed.js"
+  data-agent-id="narada_123"
+  async>
+</script>
+
+Behaviors:
+
+Reads data-agent-id
+
+Injects a <div id="narada-root"></div>
+
+Lazy-loads React bundle widget.js
+
+Mounts <NaradaWidget />
+
+Loads config from backend
+
+Starts event tracking
+
+Handles voice + AI + flows
+
+All styling isolated via Shadow DOM.
+
+🎯 4.2 Event Tagging System (Critical for Context)
+
+Event Tags allow Narada to understand the user’s journey.
+
+Tag Model:
+{
+  "id": "pricing_section",
+  "label": "Pricing Section",
+  "selector": "#pricing",
+  "eventType": "view" | "click" | "scroll" | "custom",
+  "pagePattern": "/pricing"
+}
+
+Defined by company in dashboard.
+Detected by widget using:
+
+IntersectionObserver
+
+Click listeners
+
+Scroll listeners
+
+Manual triggers
+
+Sent to backend in context:
+"context": {
+  "url": "/pricing",
+  "lastTag": "emi_opened",
+  "recentTags": [
+    {"tagId": "pricing_viewed", "type": "view"},
+    {"tagId": "emi_opened", "type": "click"}
+  ]
+}
+
+
+Narada uses this for hyper-contextual responses.
+
+🌐 4.3 Journeys & Guided Flows (Joyride)
+
+A Journey = set of Steps with UI highlights.
+
+Flow Model:
+{
+  "id": "emi_flow",
+  "agent_id": "narada_123",
+  "name": "EMI Flow",
+  "page_url": "/pricing"
+}
+
+Step Model:
+{
+  "id": "emi_step_1",
+  "flow_id": "emi_flow",
+  "selector": "#emi-calculator",
+  "title": "EMI Calculator",
+  "tooltip_text": "This helps calculate monthly payments.",
+  "voice_script": "Let me show you how EMI works.",
+  "order": 1
+}
+
+When AI triggers:
+{
+  "type": "agent_response",
+  "replyText": "...",
+  "action": { "type": "start_flow", "flowId": "emi_flow" }
+}
+
+
+Widget:
+
+Loads steps
+
+Starts Joyride
+
+Emits additional tag events
+
+Maintains progress
+
+🔊 4.4 Voice Pipeline (OpenAI Realtime API)
+
+Narada uses:
+
+PRIMARY ENGINE: OpenAI Realtime API
+
+Provides:
+
+Real-time STT
+
+Function calling (agent tools)
+
+Realtime response generation
+
+Realtime TTS output
+
+Low latency
+
+Natural turn-taking
+
+Interruptions
+
+Exactly what Narada needs.
+
+Tools passed to OpenAI Realtime:
+{
+  "start_flow": { "flowId": "string" },
+  "go_to_step": { "stepId": "string" },
+  "tag_event": { "tagId": "string" },
+  "capture_lead": { "name": "string", "phone": "string" }
+}
+
+🔥 Optional: ElevenLabs Premium Voice Mode
+
+For enterprise customers:
+
+Use OpenAI Realtime for reasoning
+
+But replace TTS with ElevenLabs voices
+
+Stream audio back to widget
+
+This is a premium voice upgrade, not core.
+
+5. BACKEND DESIGN (Python + FastAPI)
+
+Folder: backend/
+
+5.1 Backend Responsibilities
+
+Manage agents
+
+Store knowledge
+
+Store event tags
+
+Store flows + steps
+
+Manage analytics
+
+Manage leads
+
+Handle WebSocket → OpenAI Realtime streaming
+
+Tool-calls & routing
+
+Send actions + voice to widget
+
+5.2 API Endpoints
+Agent
+
+POST /api/agents
+
+GET /api/agents/{agentId}
+
+Knowledge
+
+POST /api/agents/{agentId}/knowledge
+
+GET /api/agents/{agentId}/knowledge
+
+Event Tags
+
+POST /api/agents/{agentId}/tags
+
+GET /api/agents/{agentId}/tags
+
+Flows
+
+POST /api/agents/{agentId}/flows
+
+GET /api/agents/{agentId}/flows
+
+Steps
+
+POST /api/flows/{flowId}/steps
+
+GET /api/flows/{flowId}/steps
+
+Leads
+
+POST /api/agents/{agentId}/leads
+
+GET /api/agents/{agentId}/leads
+
+Analytics
+
+GET /api/agents/{agentId}/analytics
+
+times agent used
+leads
+flows triggered
+top event tags
+conversations
+5.3 WebSocket Route
+
+/ws/agents/{agentId}/sessions/{sessionId}
+
+Client → Server:
+{
+  "type": "user_utterance",
+  "text": "Explain EMI",
+  "context": {
+    "url": "/pricing",
+    "lastTag": "emi_opened",
+    "recentTags": [...]
+  }
+}
+
+Server → Client:
+{
+  "type": "agent_response",
+  "replyText": "EMI depends on...",
+  "action": {
+    "type": "start_flow",
+    "flowId": "emi_flow"
+  },
+  "audio": "<base64 or stream>"
+}
+
+
+The backend streams voice chunks if using Realtime TTS.
+
+6. FRONTEND ARCHITECTURE (React + TypeScript)
+
+Folder: frontend/
+
+6.1 Central Component: <NaradaWidget />
+
+Responsibilities:
+
+Load agent config
+
+Load event tags
+
+Track events on page
+
+Maintain sessionContext
+
+Connect to WebSocket
+
+Handle microphone input
+
+Send user text + context
+
+Receive responses
+
+Speak responses
+
+Trigger Joyride flows
+
+Capture leads
+
+6.2 Components
+VoiceButton.tsx
+
+Handles STT via browser (MVP)
+
+Later replaced by streaming audio to backend
+
+JoyrideWrapper.tsx
+
+Converts Steps → Joyride config
+
+Runs highlights
+
+LeadForm.tsx
+
+Collects leads
+
+Sends to backend
+
+EventTracker.ts
+
+Attaches listeners to DOM
+
+Emits events to widget context
+
+6.3 Dashboard UI (NaradaDashboard.tsx)
+
+Sections:
+
+Agent Settings
+
+Knowledge Q&A
+
+Event Tags
+
+Flows & Steps
+
+Preview Sandbox
+
+Analytics
+
+Leads
+
+7. DATA MODELS
+Agent
+KnowledgeItem
+EventTag
+Flow
+Step
+Lead
+
+(As defined in previous sections)
