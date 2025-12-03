@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,11 +7,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
-import Dashboard from "@/pages/dashboard";
-import KnowledgePage from "@/pages/knowledge";
-import EventTagsPage from "@/pages/event-tags";
-import FlowsPage from "@/pages/flows";
-import AnalyticsPage from "@/pages/analytics";
+import AgentsPage from "@/pages/agents";
+import AgentDetailPage from "@/pages/agent-detail";
 import LeadsPage from "@/pages/leads";
 import WidgetDemo from "@/pages/widget-demo";
 import NotFound from "@/pages/not-found";
@@ -19,11 +16,11 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/knowledge" component={KnowledgePage} />
-      <Route path="/tags" component={EventTagsPage} />
-      <Route path="/flows" component={FlowsPage} />
-      <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/">
+        <Redirect to="/agents" />
+      </Route>
+      <Route path="/agents" component={AgentsPage} />
+      <Route path="/agents/:id" component={AgentDetailPage} />
       <Route path="/leads" component={LeadsPage} />
       <Route path="/widget-demo" component={WidgetDemo} />
       <Route component={NotFound} />

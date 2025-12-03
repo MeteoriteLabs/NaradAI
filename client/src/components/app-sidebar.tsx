@@ -1,4 +1,4 @@
-import { Home, BookOpen, Tag, GitBranch, BarChart3, Users } from "lucide-react";
+import { Bot, Users, Eye } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -13,39 +13,31 @@ import {
 
 const menuItems = [
   {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Knowledge Base",
-    url: "/knowledge",
-    icon: BookOpen,
-  },
-  {
-    title: "Event Tags",
-    url: "/tags",
-    icon: Tag,
-  },
-  {
-    title: "Flows & Journeys",
-    url: "/flows",
-    icon: GitBranch,
-  },
-  {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart3,
+    title: "Agents",
+    url: "/agents",
+    icon: Bot,
   },
   {
     title: "Leads",
     url: "/leads",
     icon: Users,
   },
+  {
+    title: "Widget Demo",
+    url: "/widget-demo",
+    icon: Eye,
+  },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
+
+  const isActive = (url: string) => {
+    if (url === "/agents") {
+      return location === "/agents" || location.startsWith("/agents/");
+    }
+    return location === url;
+  };
 
   return (
     <Sidebar>
@@ -58,7 +50,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={location === item.url}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
                       <item.icon className="w-4 h-4" />
                       <span>{item.title}</span>
