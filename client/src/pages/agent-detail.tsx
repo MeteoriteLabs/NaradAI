@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code } from "lucide-react";
+import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code, CheckCircle2, XCircle, AlertCircle, Loader2, Globe, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,216 @@ const voiceOptions = [
   { value: "nova", label: "Nova" },
   { value: "shimmer", label: "Shimmer" },
 ];
+
+interface VerificationResult {
+  verified: boolean;
+  status: 'connected' | 'partial' | 'not_found' | 'error' | 'timeout';
+  message: string;
+}
+
+function EmbedSection({ agentId }: { agentId: string }) {
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const verifyMutation = useMutation({
+    mutationFn: async (url: string): Promise<VerificationResult> => {
+      return await apiRequest("POST", `/api/agents/${agentId}/verify-installation`, { url });
+    },
+  });
+
+  const copyEmbedCode = () => {
+    const apiBase = window.location.origin;
+    const embedCode = `<script src="https://cdn.narada.ai/embed.js" data-agent-id="${agentId}" data-api-base="${apiBase}" async></script>`;
+    navigator.clipboard.writeText(embedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({
+      title: "Copied!",
+      description: "Embed code copied to clipboard.",
+    });
+  };
+
+  const handleVerify = () => {
+    if (!websiteUrl.trim()) {
+      toast({
+        title: "URL required",
+        description: "Please enter a website URL to verify.",
+        variant: "destructive",
+      });
+      return;
+    }
+    verifyMutation.mutate(websiteUrl);
+  };
+
+  const getStatusIcon = () => {
+    if (!verifyMutation.data) return null;
+    
+    switch (verifyMutation.data.status) {
+      case 'connected':
+        return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+      case 'partial':
+        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+      default:
+        return <XCircle className="w-5 h-5 text-red-500" />;
+    }
+  };
+
+  const getStatusColor = () => {
+    if (!verifyMutation.data) return "bg-muted";
+    
+    switch (verifyMutation.data.status) {
+      case 'connected':
+        return "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800";
+      case 'partial':
+        return "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800";
+      default:
+        return "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Embed Widget</CardTitle>
+          <CardDescription>
+            Add this code to your website to display the AI assistant widget.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <pre className="bg-muted p-4 pr-24 rounded-lg text-xs overflow-x-auto font-mono">
+              {`<script
+  src="https://cdn.narada.ai/embed.js"
+  data-agent-id="${agentId}"
+  data-api-base="${window.location.origin}"
+  async>
+</script>`}
+            </pre>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute top-2 right-2 gap-1"
+              onClick={copyEmbedCode}
+              data-testid="button-copy-embed-code"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Copy</span>
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <p className="mb-2">
+              <strong>Instructions:</strong>
+            </p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Copy the code snippet above</li>
+              <li>Paste it before the closing <code className="bg-muted px-1 rounded">&lt;/body&gt;</code> tag</li>
+              <li>The widget will appear in the bottom-right corner</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="w-5 h-5" />
+            Verify Installation
+          </CardTitle>
+          <CardDescription>
+            Test if the widget is properly installed on your website. Enter your website URL and we'll check if the embed code is detected.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Input
+                placeholder="https://yourwebsite.com"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                className="pr-10"
+                data-testid="input-website-url"
+              />
+              {websiteUrl && (
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+            <Button
+              onClick={handleVerify}
+              disabled={verifyMutation.isPending}
+              className="sm:w-auto"
+              data-testid="button-verify-installation"
+            >
+              {verifyMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                "Verify Installation"
+              )}
+            </Button>
+          </div>
+
+          {verifyMutation.data && (
+            <div
+              className={`flex items-start gap-3 p-4 rounded-lg border ${getStatusColor()}`}
+              data-testid="verification-result"
+            >
+              {getStatusIcon()}
+              <div className="flex-1">
+                <p className="font-medium" data-testid="text-verification-status">
+                  {verifyMutation.data.verified ? "Connected" : "Not Connected"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1" data-testid="text-verification-message">
+                  {verifyMutation.data.message}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {verifyMutation.error && (
+            <div className="flex items-start gap-3 p-4 rounded-lg border bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800">
+              <XCircle className="w-5 h-5 text-red-500" />
+              <div className="flex-1">
+                <p className="font-medium">Verification Failed</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {(verifyMutation.error as Error).message || "An error occurred while verifying the installation."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
+            <p className="font-medium mb-2">How verification works:</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>We fetch your website and check for the Narada embed script</li>
+              <li>We verify the script is configured with this agent's ID</li>
+              <li>Your website must be publicly accessible for verification</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function AgentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -304,45 +515,7 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="embed">
-          <Card>
-            <CardHeader>
-              <CardTitle>Embed Widget</CardTitle>
-              <CardDescription>
-                Add this code to your website to display the AI assistant widget.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="relative">
-                <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto font-mono">
-                  {`<script
-  src="https://cdn.narada.ai/embed.js"
-  data-agent-id="${agentId}"
-  data-api-base="${window.location.origin}"
-  async>
-</script>`}
-                </pre>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="absolute top-2 right-2"
-                  onClick={copyEmbedCode}
-                  data-testid="button-copy-embed-code"
-                >
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">
-                  <strong>Instructions:</strong>
-                </p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Copy the code snippet above</li>
-                  <li>Paste it before the closing <code>&lt;/body&gt;</code> tag</li>
-                  <li>The widget will appear in the bottom-right corner</li>
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
+          <EmbedSection agentId={agentId} />
         </TabsContent>
       </Tabs>
     </div>
