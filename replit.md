@@ -161,30 +161,66 @@ npm run build:widget  # Creates embeddable widget bundle
 narada-ai/
 ├── client/                 # React frontend
 │   ├── src/
-│   │   ├── components/     # Shadcn UI components
-│   │   ├── pages/          # Dashboard pages
+│   │   ├── components/
+│   │   │   ├── ui/             # Shadcn UI components
+│   │   │   ├── agent-sections/ # Agent-scoped section components
+│   │   │   │   ├── knowledge-section.tsx
+│   │   │   │   ├── event-tags-section.tsx
+│   │   │   │   ├── flows-section.tsx
+│   │   │   │   └── analytics-section.tsx
+│   │   │   └── app-sidebar.tsx # Navigation sidebar
+│   │   ├── pages/
+│   │   │   ├── agents.tsx      # Agent cards grid (main page)
+│   │   │   ├── agent-detail.tsx # Agent detail with tabs
+│   │   │   ├── leads.tsx       # Leads management
+│   │   │   └── widget-demo.tsx # Widget preview
 │   │   ├── lib/            # Utils, query client
 │   │   └── App.tsx         # Main app with routing
 │   └── index.html
-├── backend/                # Python FastAPI backend
-│   ├── main.py            # FastAPI app entry
-│   ├── routes/            # API route handlers
-│   ├── models/            # SQLAlchemy models
-│   ├── utils/             # Helpers (OpenAI, DB)
-│   └── requirements.txt
+├── server/                 # Express TypeScript backend
+│   ├── routes.ts          # API route handlers
+│   ├── storage.ts         # Database storage interface
+│   ├── websocket.ts       # WebSocket handler for voice AI
+│   └── index-dev.ts       # Development server entry
 ├── widget/                 # Embeddable widget
-│   ├── src/
-│   │   ├── NaradaWidget.tsx
-│   │   ├── components/
-│   │   └── embed.ts       # Script injection logic
-│   └── vite.config.ts
+│   ├── NaradaWidget.tsx
+│   └── embed.ts           # Script injection logic
 ├── shared/
 │   └── schema.ts          # Shared TypeScript types
 └── design_guidelines.md   # Design system documentation
 ```
 
+## UI Architecture
+
+### Navigation Routes
+- `/` → Redirects to `/agents`
+- `/agents` → Agent cards grid (main agents list)
+- `/agents/:id` → Agent detail page with tabbed sections
+- `/leads` → Leads management page
+- `/widget-demo` → Widget preview page
+
+### Agent Detail Tabs
+The agent detail page (`/agents/:id`) uses a tabbed interface:
+1. **Settings** - Agent name, persona, voice style configuration
+2. **Knowledge** - Q&A pairs management
+3. **Tags** - Event tracking tags (view, click, scroll, custom)
+4. **Flows** - Guided tour steps with Joyride integration
+5. **Analytics** - Conversation stats and recent interactions
+6. **Embed** - Widget embed code with copy-to-clipboard
+
+### Responsive Design
+- Agent cards: 1 column mobile, 2 tablet, 3-4 desktop
+- Tab sections stack vertically on mobile
+- Touch-friendly targets and spacing
+
 ## Recent Changes
-- 2024-01-25: Initial project setup with schema definition
+- 2024-12-03: Major UI refactor - Card-based agent management
+  - Renamed Dashboard to Agents with responsive card grid
+  - Created dedicated agent detail page with tabbed sections
+  - Extracted reusable agent-scoped section components
+  - Simplified sidebar navigation (Agents, Leads, Widget Demo)
+- WebSocket implementation with OpenAI tool-calling loop
+- Embeddable widget with Shadow DOM isolation
+- Initial project setup with schema definition
 - Configured Inter and JetBrains Mono fonts
-- Defined complete database schema for all MVP features
 - Set up dual design system (Dashboard + Widget)
