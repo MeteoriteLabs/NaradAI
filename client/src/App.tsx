@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import AgentsPage from "@/pages/agents";
 import AgentDetailPage from "@/pages/agent-detail";
 import LeadsPage from "@/pages/leads";
-import WidgetDemo from "@/pages/widget-demo";
+import DocsPage from "@/pages/docs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,7 +22,7 @@ function Router() {
       <Route path="/agents" component={AgentsPage} />
       <Route path="/agents/:id" component={AgentDetailPage} />
       <Route path="/leads" component={LeadsPage} />
-      <Route path="/widget-demo" component={WidgetDemo} />
+      <Route path="/docs" component={DocsPage} />
       <Route component={NotFound} />
     </Switch>
   );

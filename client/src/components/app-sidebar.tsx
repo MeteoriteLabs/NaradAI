@@ -1,4 +1,4 @@
-import { Bot, Users, Eye } from "lucide-react";
+import { Bot, Users, BookOpen } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -23,9 +23,9 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Widget Demo",
-    url: "/widget-demo",
-    icon: Eye,
+    title: "Documentation",
+    url: "/docs",
+    icon: BookOpen,
   },
 ];
 
