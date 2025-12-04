@@ -215,6 +215,11 @@ The agent detail page (`/agents/:id`) uses a tabbed interface:
 - Touch-friendly targets and spacing
 
 ## Recent Changes
+- 2024-12-04: Self-hosted embed.js endpoint
+  - Added `/embed.js` endpoint that serves the widget JavaScript
+  - Widget no longer requires external CDN (cdn.narada.ai)
+  - Embed code now uses app's own URL: `${origin}/embed.js`
+  - Self-contained widget with Shadow DOM, chat UI, event tracking
 - 2024-12-03: Widget installation verification feature
   - Added verification endpoint to check if widget is installed on external sites
   - Enhanced Embed tab with URL input and verification status display
