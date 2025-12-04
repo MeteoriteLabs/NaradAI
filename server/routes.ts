@@ -288,15 +288,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const html = await response.text();
 
-        // Check for embed script patterns
-        const embedPatterns = [
-          new RegExp(`data-agent-id=["']${agentId}["']`, 'i'),
-          new RegExp(`cdn\\.narada\\.ai/embed\\.js`, 'i'),
-          new RegExp(`narada.*embed.*${agentId}`, 'i'),
-        ];
-
-        const hasAgentId = embedPatterns[0].test(html);
-        const hasEmbedScript = embedPatterns[1].test(html) || html.includes('narada') && html.includes('embed');
+        // Check for embed script patterns - look for any embed.js with Narada markers
+        const hasAgentId = new RegExp(`data-agent-id=["']${agentId}["']`, 'i').test(html);
+        const hasEmbedScript = /embed\.js[^>]*data-agent-id/i.test(html) || 
+                               /narada.*embed/i.test(html) || 
+                               html.includes('narada-widget-host');
 
         if (hasAgentId) {
           return res.json({
@@ -335,6 +331,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Serve embed.js script for external websites
+  app.get("/embed.js", (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    
+    const embedScript = `
+(function() {
+  var currentScript = document.currentScript;
+  
+  if (!currentScript) {
+    console.error('[Narada AI] Could not find script tag');
+    return;
+  }
+
+  var agentId = currentScript.getAttribute('data-agent-id');
+  var apiBase = currentScript.getAttribute('data-api-base') || currentScript.src.replace('/embed.js', '');
+  
+  if (!agentId) {
+    console.error('[Narada AI] Missing data-agent-id attribute');
+    return;
+  }
+
+  // Create widget container with Shadow DOM
+  var widgetHost = document.createElement('div');
+  widgetHost.id = 'narada-widget-host';
+  document.body.appendChild(widgetHost);
+
+  var shadowRoot = widgetHost.attachShadow({ mode: 'open' });
+  
+  // Add widget styles
+  var style = document.createElement('style');
+  style.textContent = \`
+    #narada-widget-root {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .narada-fab {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .narada-fab:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+    }
+    .narada-fab svg {
+      width: 28px;
+      height: 28px;
+      fill: white;
+    }
+    .narada-chat {
+      position: absolute;
+      bottom: 70px;
+      right: 0;
+      width: 350px;
+      max-height: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .narada-chat.open {
+      display: flex;
+    }
+    .narada-chat-header {
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .narada-chat-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .narada-chat-header p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .narada-chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      min-height: 200px;
+    }
+    .narada-message {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 85%;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .narada-message.assistant {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .narada-message.user {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin-left: auto;
+    }
+    .narada-chat-input {
+      padding: 12px 16px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 8px;
+    }
+    .narada-chat-input input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      outline: none;
+      font-size: 14px;
+    }
+    .narada-chat-input input:focus {
+      border-color: #667eea;
+    }
+    .narada-chat-input button {
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+  \`;
+  shadowRoot.appendChild(style);
+
+  var widgetContainer = document.createElement('div');
+  widgetContainer.id = 'narada-widget-root';
+  widgetContainer.innerHTML = \`
+    <div class="narada-chat" id="narada-chat-panel">
+      <div class="narada-chat-header">
+        <h3>Narada AI Assistant</h3>
+        <p>How can I help you today?</p>
+      </div>
+      <div class="narada-chat-messages" id="narada-messages">
+        <div class="narada-message assistant">Hello! I'm your AI assistant. How can I help you navigate this website?</div>
+      </div>
+      <div class="narada-chat-input">
+        <input type="text" placeholder="Type a message..." id="narada-input" />
+        <button id="narada-send">Send</button>
+      </div>
+    </div>
+    <button class="narada-fab" id="narada-toggle">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+    </button>
+  \`;
+  shadowRoot.appendChild(widgetContainer);
+
+  // Toggle chat
+  var toggleBtn = shadowRoot.getElementById('narada-toggle');
+  var chatPanel = shadowRoot.getElementById('narada-chat-panel');
+  toggleBtn.addEventListener('click', function() {
+    chatPanel.classList.toggle('open');
+  });
+
+  // Handle send
+  var input = shadowRoot.getElementById('narada-input');
+  var sendBtn = shadowRoot.getElementById('narada-send');
+  var messages = shadowRoot.getElementById('narada-messages');
+  
+  function sendMessage() {
+    var text = input.value.trim();
+    if (!text) return;
+    
+    var userMsg = document.createElement('div');
+    userMsg.className = 'narada-message user';
+    userMsg.textContent = text;
+    messages.appendChild(userMsg);
+    input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+    
+    // Connect to WebSocket for real responses
+    var wsProtocol = apiBase.startsWith('https') ? 'wss' : 'ws';
+    var wsHost = apiBase.replace(/^https?:\\/\\//, '');
+    var sessionId = 'session_' + Date.now();
+    
+    fetch(apiBase + '/api/agents/' + agentId)
+      .then(function(r) { return r.json(); })
+      .then(function(agent) {
+        var aiMsg = document.createElement('div');
+        aiMsg.className = 'narada-message assistant';
+        aiMsg.textContent = 'Thanks for your message! I\\'m ' + (agent.name || 'Narada AI') + '. This is a demo response.';
+        messages.appendChild(aiMsg);
+        messages.scrollTop = messages.scrollHeight;
+      })
+      .catch(function() {
+        var aiMsg = document.createElement('div');
+        aiMsg.className = 'narada-message assistant';
+        aiMsg.textContent = 'Thanks for reaching out! Our team will get back to you soon.';
+        messages.appendChild(aiMsg);
+        messages.scrollTop = messages.scrollHeight;
+      });
+  }
+  
+  sendBtn.addEventListener('click', sendMessage);
+  input.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  // Track page view
+  console.log('[Narada AI] Widget loaded for agent:', agentId);
+  console.log('[Narada AI] Page view:', window.location.href);
+})();
+`;
+    res.send(embedScript);
   });
 
   const httpServer = createServer(app);

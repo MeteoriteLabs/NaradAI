@@ -68,9 +68,10 @@ function EmbedSection({ agentId }: { agentId: string }) {
     },
   });
 
+  const apiBase = window.location.origin;
+  const embedCode = `<script src="${apiBase}/embed.js" data-agent-id="${agentId}" async></script>`;
+
   const copyEmbedCode = () => {
-    const apiBase = window.location.origin;
-    const embedCode = `<script src="https://cdn.narada.ai/embed.js" data-agent-id="${agentId}" data-api-base="${apiBase}" async></script>`;
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -131,9 +132,8 @@ function EmbedSection({ agentId }: { agentId: string }) {
           <div className="relative">
             <pre className="bg-muted p-4 pr-24 rounded-lg text-xs overflow-x-auto font-mono">
               {`<script
-  src="https://cdn.narada.ai/embed.js"
+  src="${apiBase}/embed.js"
   data-agent-id="${agentId}"
-  data-api-base="${window.location.origin}"
   async>
 </script>`}
             </pre>
@@ -302,7 +302,7 @@ export default function AgentDetailPage() {
   const copyEmbedCode = () => {
     if (!agentId) return;
     const apiBase = window.location.origin;
-    const embedCode = `<script src="https://cdn.narada.ai/embed.js" data-agent-id="${agentId}" data-api-base="${apiBase}" async></script>`;
+    const embedCode = `<script src="${apiBase}/embed.js" data-agent-id="${agentId}" async></script>`;
     navigator.clipboard.writeText(embedCode);
     toast({
       title: "Copied!",
