@@ -329,19 +329,25 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     }
   }, [state.isStreaming, startStreaming, stopStreaming]);
 
-  // Auto-connect on mount
+  // Connect on mount, cleanup on unmount
   useEffect(() => {
+    // Auto-connect when component mounts
+    console.log("[Narada Stream] Hook mounted, connecting...");
     connect();
+    
     return () => {
+      console.log("[Narada Stream] Hook unmounting, cleaning up...");
       stopStreaming();
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
       if (playbackContextRef.current) {
         playbackContextRef.current.close();
+        playbackContextRef.current = null;
       }
     };
-  }, [connect, stopStreaming]);
+  }, []); // Empty deps - only run on mount/unmount
 
   // Disconnect
   const disconnect = useCallback(() => {

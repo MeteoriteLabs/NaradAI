@@ -27,112 +27,136 @@ const WIDGET_DESIGNS: Record<
   "corner-card": { Component: CornerCard, Trigger: CornerCardTrigger },
 };
 
-export function Widget({ agentId, websocketUrl, streamingWebsocketUrl, apiBase, useStreaming = false }: WidgetProps) {
-  // Use legacy batch mode for backward compatibility
+// Streaming widget wrapper - uses streaming voice hook
+function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl }: WidgetProps) {
+  // Get agent data from legacy hook (for agent info, flows, lead forms, etc.)
   const legacyVoice = useVoiceAgent({ agentId, websocketUrl, apiBase });
   
-  // Use streaming mode when enabled and URL is available
+  // Use streaming voice hook for voice interaction
   const streamingVoice = useStreamingVoice({
     agentId,
-    wsUrl: streamingWebsocketUrl || websocketUrl,
-    onTranscript: (text, isFinal) => {
-      console.log('[Narada] Transcript:', text, isFinal ? '(final)' : '(partial)');
+    wsUrl: streamingWebsocketUrl!,
+    onTranscript: (text: string, isFinal: boolean) => {
+      console.log('[Narada Stream] Transcript:', text, isFinal ? '(final)' : '(partial)');
     },
-    onAIResponse: (text) => {
-      console.log('[Narada] AI Response:', text);
+    onAIResponse: (text: string) => {
+      console.log('[Narada Stream] AI Response:', text);
     },
-    onError: (error) => {
-      console.error('[Narada] Streaming error:', error);
+    onError: (error: string) => {
+      console.error('[Narada Stream] Error:', error);
     },
   });
 
-  // Determine which mode to use
-  const shouldUseStreaming = useStreaming && streamingWebsocketUrl;
-  
-  // Unified state from either mode
-  const {
-    isOpen,
-    isRecording,
-    isPlaying,
-    isSpeaking,
-    audioLevel,
-    transcript,
-    agentData,
-    toggleRecording,
-    openWidget,
-    closeWidget,
-    isLeadFormOpen,
-    setIsLeadFormOpen,
-    joyrideSteps,
-    runJoyride,
-    handleFlowComplete,
-    handleStepChange,
-    submitLead,
-  } = shouldUseStreaming ? {
-    // Map streaming state to legacy interface
-    isOpen: legacyVoice.isOpen,
-    isRecording: streamingVoice.isStreaming,
-    isPlaying: streamingVoice.isAISpeaking,
-    isSpeaking: streamingVoice.isAISpeaking,
-    audioLevel: streamingVoice.audioLevel,
-    transcript: streamingVoice.partialTranscript || streamingVoice.transcript || undefined,
-    agentData: legacyVoice.agentData,
-    toggleRecording: streamingVoice.toggleStreaming,
-    openWidget: legacyVoice.openWidget,
-    closeWidget: legacyVoice.closeWidget,
-    isLeadFormOpen: legacyVoice.isLeadFormOpen,
-    setIsLeadFormOpen: legacyVoice.setIsLeadFormOpen,
-    joyrideSteps: legacyVoice.joyrideSteps,
-    runJoyride: legacyVoice.runJoyride,
-    handleFlowComplete: legacyVoice.handleFlowComplete,
-    handleStepChange: legacyVoice.handleStepChange,
-    submitLead: legacyVoice.submitLead,
-  } : legacyVoice;
-
-  if (!agentData) {
+  if (!legacyVoice.agentData) {
     return null;
   }
 
-  const widgetDesign = (agentData.widgetDesign || "voice-bar") as WidgetDesign;
+  const widgetDesign = (legacyVoice.agentData.widgetDesign || "voice-bar") as WidgetDesign;
   const { Component, Trigger } = WIDGET_DESIGNS[widgetDesign] || WIDGET_DESIGNS["voice-bar"];
 
   const designProps: WidgetDesignProps = {
-    isRecording,
-    isPlaying,
-    isSpeaking,
-    onRecordToggle: toggleRecording,
-    onClose: closeWidget,
-    agentName: agentData.name,
-    audioLevel,
-    transcript,
-    widgetColor: agentData.widgetColor,
+    isRecording: streamingVoice.isStreaming,
+    isPlaying: streamingVoice.isAISpeaking,
+    isSpeaking: streamingVoice.isAISpeaking,
+    onRecordToggle: streamingVoice.toggleStreaming,
+    onClose: legacyVoice.closeWidget,
+    agentName: legacyVoice.agentData.name,
+    audioLevel: streamingVoice.audioLevel,
+    transcript: streamingVoice.partialTranscript || streamingVoice.transcript || undefined,
+    widgetColor: legacyVoice.agentData.widgetColor,
   };
 
   const triggerProps: WidgetTriggerProps = {
-    onClick: openWidget,
-    agentName: agentData.name,
-    widgetColor: agentData.widgetColor,
+    onClick: legacyVoice.openWidget,
+    agentName: legacyVoice.agentData.name,
+    widgetColor: legacyVoice.agentData.widgetColor,
   };
 
   return (
     <>
-      {isOpen ? <Component {...designProps} /> : <Trigger {...triggerProps} />}
+      {legacyVoice.isOpen ? <Component {...designProps} /> : <Trigger {...triggerProps} />}
 
-      {isLeadFormOpen && (
+      {legacyVoice.isLeadFormOpen && (
         <LeadForm
-          onSubmit={submitLead}
-          onClose={() => setIsLeadFormOpen(false)}
+          onSubmit={legacyVoice.submitLead}
+          onClose={() => legacyVoice.setIsLeadFormOpen(false)}
         />
       )}
 
-      {runJoyride && (
+      {legacyVoice.runJoyride && (
         <JoyrideFlowWrapper
-          steps={joyrideSteps}
-          onFlowComplete={handleFlowComplete}
-          onStepChange={handleStepChange}
-          run={runJoyride}
+          steps={legacyVoice.joyrideSteps}
+          onFlowComplete={legacyVoice.handleFlowComplete}
+          onStepChange={legacyVoice.handleStepChange}
+          run={legacyVoice.runJoyride}
         />
       )}
     </>
   );
+}
+
+// Legacy widget - uses batch audio processing
+function LegacyWidget({ agentId, websocketUrl, apiBase }: WidgetProps) {
+  const voiceAgent = useVoiceAgent({ agentId, websocketUrl, apiBase });
+
+  if (!voiceAgent.agentData) {
+    return null;
+  }
+
+  const widgetDesign = (voiceAgent.agentData.widgetDesign || "voice-bar") as WidgetDesign;
+  const { Component, Trigger } = WIDGET_DESIGNS[widgetDesign] || WIDGET_DESIGNS["voice-bar"];
+
+  const designProps: WidgetDesignProps = {
+    isRecording: voiceAgent.isRecording,
+    isPlaying: voiceAgent.isPlaying,
+    isSpeaking: voiceAgent.isSpeaking,
+    onRecordToggle: voiceAgent.toggleRecording,
+    onClose: voiceAgent.closeWidget,
+    agentName: voiceAgent.agentData.name,
+    audioLevel: voiceAgent.audioLevel,
+    transcript: voiceAgent.transcript,
+    widgetColor: voiceAgent.agentData.widgetColor,
+  };
+
+  const triggerProps: WidgetTriggerProps = {
+    onClick: voiceAgent.openWidget,
+    agentName: voiceAgent.agentData.name,
+    widgetColor: voiceAgent.agentData.widgetColor,
+  };
+
+  return (
+    <>
+      {voiceAgent.isOpen ? <Component {...designProps} /> : <Trigger {...triggerProps} />}
+
+      {voiceAgent.isLeadFormOpen && (
+        <LeadForm
+          onSubmit={voiceAgent.submitLead}
+          onClose={() => voiceAgent.setIsLeadFormOpen(false)}
+        />
+      )}
+
+      {voiceAgent.runJoyride && (
+        <JoyrideFlowWrapper
+          steps={voiceAgent.joyrideSteps}
+          onFlowComplete={voiceAgent.handleFlowComplete}
+          onStepChange={voiceAgent.handleStepChange}
+          run={voiceAgent.runJoyride}
+        />
+      )}
+    </>
+  );
+}
+
+// Main Widget component - chooses streaming or legacy mode
+export function Widget(props: WidgetProps) {
+  const { useStreaming, streamingWebsocketUrl } = props;
+  
+  // Use streaming mode only if explicitly enabled AND streaming URL is provided
+  if (useStreaming && streamingWebsocketUrl) {
+    console.log('[Narada] Using streaming mode');
+    return <StreamingWidget {...props} />;
+  }
+  
+  console.log('[Narada] Using legacy mode');
+  return <LegacyWidget {...props} />;
 }
