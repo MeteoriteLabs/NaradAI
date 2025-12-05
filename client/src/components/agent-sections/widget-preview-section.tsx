@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Mic, MessageCircle, Volume2, Check } from "lucide-react";
+import { Mic, MessageCircle, Volume2, Check, Loader2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Agent } from "@shared/schema";
 
 interface WidgetPreviewSectionProps {
   agentId: string;
@@ -143,8 +147,45 @@ function CornerCardPreview({ agentName, isActive }: { agentName: string; isActiv
 }
 
 export function WidgetPreviewSection({ agentId, agentName = "AI Assistant" }: WidgetPreviewSectionProps) {
-  const [selectedDesign, setSelectedDesign] = useState<WidgetDesign>("voice-bar");
+  const { toast } = useToast();
   const [isPreviewActive, setIsPreviewActive] = useState(false);
+
+  const { data: agent } = useQuery<Agent>({
+    queryKey: ["/api/agents", agentId],
+    enabled: !!agentId,
+  });
+
+  const [selectedDesign, setSelectedDesign] = useState<WidgetDesign>("voice-bar");
+
+  useEffect(() => {
+    if (agent?.widgetDesign) {
+      setSelectedDesign(agent.widgetDesign as WidgetDesign);
+    }
+  }, [agent]);
+
+  const updateDesignMutation = useMutation({
+    mutationFn: (design: WidgetDesign) =>
+      apiRequest("PUT", `/api/agents/${agentId}`, { widgetDesign: design }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents", agentId] });
+      toast({
+        title: "Design saved",
+        description: "Your widget design has been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save design. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDesignChange = (design: WidgetDesign) => {
+    setSelectedDesign(design);
+    updateDesignMutation.mutate(design);
+  };
 
   const renderPreview = () => {
     switch (selectedDesign) {
@@ -185,7 +226,12 @@ export function WidgetPreviewSection({ agentId, agentName = "AI Assistant" }: Wi
 
         <Card>
           <CardHeader>
-            <CardTitle>Choose Design</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Choose Design
+              {updateDesignMutation.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </CardTitle>
             <CardDescription>
               Select the widget style that best fits your website
             </CardDescription>
@@ -193,7 +239,7 @@ export function WidgetPreviewSection({ agentId, agentName = "AI Assistant" }: Wi
           <CardContent>
             <RadioGroup
               value={selectedDesign}
-              onValueChange={(value) => setSelectedDesign(value as WidgetDesign)}
+              onValueChange={(value) => handleDesignChange(value as WidgetDesign)}
               className="space-y-3"
             >
               {designs.map((design) => (
@@ -204,7 +250,7 @@ export function WidgetPreviewSection({ agentId, agentName = "AI Assistant" }: Wi
                       ? "border-primary bg-primary/5"
                       : "border-muted hover:border-primary/50"
                   }`}
-                  onClick={() => setSelectedDesign(design.id)}
+                  onClick={() => handleDesignChange(design.id)}
                   data-testid={`design-option-${design.id}`}
                 >
                   <RadioGroupItem value={design.id} id={design.id} className="mt-1" />
@@ -222,13 +268,6 @@ export function WidgetPreviewSection({ agentId, agentName = "AI Assistant" }: Wi
                 </div>
               ))}
             </RadioGroup>
-
-            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> The Voice Bar design is currently active. 
-                Additional designs will be available in a future update.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

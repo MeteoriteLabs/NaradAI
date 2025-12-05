@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { VoiceBar, VoiceBarTrigger } from "./VoiceBar";
+import { FloatingBubble, FloatingBubbleTrigger } from "./FloatingBubble";
+import { CornerCard, CornerCardTrigger } from "./CornerCard";
 import { LeadForm, LeadFormData } from "./LeadForm";
 import { JoyrideFlowWrapper } from "./JoyrideFlowWrapper";
 import { Step } from "react-joyride";
@@ -270,25 +272,46 @@ export function Widget({ agentId, websocketUrl }: WidgetProps) {
     return null;
   }
 
+  const widgetDesign = agentData.widgetDesign || "voice-bar";
+
+  const renderWidget = () => {
+    const commonProps = {
+      isRecording,
+      isPlaying,
+      isSpeaking,
+      onRecordToggle: handleRecordToggle,
+      onClose: handleClose,
+      agentName: agentData.name,
+      audioLevel,
+      transcript,
+    };
+
+    switch (widgetDesign) {
+      case "floating-bubble":
+        return isOpen ? (
+          <FloatingBubble {...commonProps} />
+        ) : (
+          <FloatingBubbleTrigger onClick={() => setIsOpen(true)} agentName={agentData.name} />
+        );
+      case "corner-card":
+        return isOpen ? (
+          <CornerCard {...commonProps} />
+        ) : (
+          <CornerCardTrigger onClick={() => setIsOpen(true)} agentName={agentData.name} />
+        );
+      case "voice-bar":
+      default:
+        return isOpen ? (
+          <VoiceBar {...commonProps} />
+        ) : (
+          <VoiceBarTrigger onClick={() => setIsOpen(true)} agentName={agentData.name} />
+        );
+    }
+  };
+
   return (
     <>
-      {isOpen ? (
-        <VoiceBar
-          isRecording={isRecording}
-          isPlaying={isPlaying}
-          isSpeaking={isSpeaking}
-          onRecordToggle={handleRecordToggle}
-          onClose={handleClose}
-          agentName={agentData.name}
-          audioLevel={audioLevel}
-          transcript={transcript}
-        />
-      ) : (
-        <VoiceBarTrigger
-          onClick={() => setIsOpen(true)}
-          agentName={agentData.name}
-        />
-      )}
+      {renderWidget()}
 
       {isLeadFormOpen && (
         <LeadForm
