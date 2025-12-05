@@ -6,6 +6,7 @@ import {
   StatusIndicator,
   TranscriptBubble,
   ChatIcon,
+  MuteButton,
 } from "./core/components";
 
 const WIDGET_STYLES = {
@@ -29,13 +30,16 @@ const WIDGET_STYLES = {
   controls: {
     display: "flex",
     gap: "8px",
+    alignItems: "center",
   },
 };
 
 export function FloatingBubble({
   isRecording,
   isSpeaking,
+  isMuted,
   onRecordToggle,
+  onMuteToggle,
   onClose,
   agentName,
   transcript,
@@ -51,7 +55,7 @@ export function FloatingBubble({
       )}
 
       <div style={WIDGET_STYLES.buttonGroup}>
-        <StatusIndicator isRecording={isRecording} isSpeaking={isSpeaking} />
+        <StatusIndicator isRecording={isRecording} isSpeaking={isSpeaking} isMuted={isMuted} />
 
         <div style={WIDGET_STYLES.controls}>
           <MicButton
@@ -59,9 +63,12 @@ export function FloatingBubble({
             onClick={onRecordToggle}
             size="lg"
           />
-          <div style={{ alignSelf: "flex-end" }}>
-            <CloseButton onClick={onClose} variant="light" size="md" />
-          </div>
+          <MuteButton
+            isMuted={isMuted}
+            onClick={onMuteToggle}
+            size="md"
+          />
+          <CloseButton onClick={onClose} variant="light" size="md" />
         </div>
       </div>
     </div>

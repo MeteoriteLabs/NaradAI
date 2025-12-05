@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { VoiceBar, VoiceBarTrigger } from "./VoiceBar";
 import { FloatingBubble, FloatingBubbleTrigger } from "./FloatingBubble";
 import { CornerCard, CornerCardTrigger } from "./CornerCard";
@@ -47,6 +48,56 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
     },
   });
 
+  // Track if we've already auto-started for this widget open session
+  const hasAutoStartedRef = useRef(false);
+  const wasOpenRef = useRef(false);
+
+  // Reset auto-start flag when widget closes
+  useEffect(() => {
+    if (!legacyVoice.isOpen && wasOpenRef.current) {
+      hasAutoStartedRef.current = false;
+    }
+    wasOpenRef.current = legacyVoice.isOpen;
+  }, [legacyVoice.isOpen]);
+
+  // Auto-start handling: when widget opens with autoStart enabled, start streaming
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    
+    const shouldAutoStart = 
+      legacyVoice.isOpen && 
+      legacyVoice.agentData?.autoStart && 
+      streamingVoice.isConnected && 
+      !streamingVoice.isStreaming && 
+      !hasAutoStartedRef.current;
+    
+    if (shouldAutoStart) {
+      hasAutoStartedRef.current = true;
+      console.log('[Narada Stream] Auto-starting voice...');
+      // Small delay to ensure AudioContext is ready after user interaction
+      timeout = setTimeout(() => {
+        // Guard against calling if already streaming (idempotent safety)
+        if (!streamingVoice.isStreaming) {
+          streamingVoice.startStreaming();
+        }
+      }, 100);
+    }
+    
+    // Always return cleanup to clear any scheduled timeout
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [legacyVoice.isOpen, legacyVoice.agentData?.autoStart, streamingVoice.isConnected, streamingVoice.isStreaming, streamingVoice.startStreaming]);
+
+  // Handle close: disconnect everything when closing widget
+  const handleClose = () => {
+    console.log('[Narada Stream] Closing widget, disconnecting...');
+    streamingVoice.disconnect();
+    legacyVoice.closeWidget();
+  };
+
   if (!legacyVoice.agentData) {
     return null;
   }
@@ -58,8 +109,10 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
     isRecording: streamingVoice.isStreaming,
     isPlaying: streamingVoice.isAISpeaking,
     isSpeaking: streamingVoice.isAISpeaking,
+    isMuted: streamingVoice.isMuted,
     onRecordToggle: streamingVoice.toggleStreaming,
-    onClose: legacyVoice.closeWidget,
+    onMuteToggle: streamingVoice.toggleMute,
+    onClose: handleClose,
     agentName: legacyVoice.agentData.name,
     audioLevel: streamingVoice.audioLevel,
     transcript: streamingVoice.partialTranscript || streamingVoice.transcript || undefined,
@@ -110,7 +163,9 @@ function LegacyWidget({ agentId, websocketUrl, apiBase }: WidgetProps) {
     isRecording: voiceAgent.isRecording,
     isPlaying: voiceAgent.isPlaying,
     isSpeaking: voiceAgent.isSpeaking,
+    isMuted: false, // Legacy doesn't support mute yet
     onRecordToggle: voiceAgent.toggleRecording,
+    onMuteToggle: () => {}, // No-op for legacy
     onClose: voiceAgent.closeWidget,
     agentName: voiceAgent.agentData.name,
     audioLevel: voiceAgent.audioLevel,

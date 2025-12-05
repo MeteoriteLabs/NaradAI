@@ -24,13 +24,16 @@ export interface AgentConfig {
   voiceStyle?: string;
   widgetDesign?: WidgetDesign;
   widgetColor?: string;
+  autoStart?: boolean;
 }
 
 export interface WidgetDesignProps {
   isRecording: boolean;
   isPlaying: boolean;
   isSpeaking: boolean;
+  isMuted: boolean;
   onRecordToggle: () => void;
+  onMuteToggle: () => void;
   onClose: () => void;
   agentName: string;
   audioLevel: number;

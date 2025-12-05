@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +40,7 @@ import { WidgetPreviewSection } from "@/components/agent-sections/widget-preview
 
 const agentFormSchema = insertAgentSchema.extend({
   name: z.string().min(1, "Name is required"),
+  autoStart: z.boolean().optional(),
 });
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
@@ -279,11 +281,13 @@ export default function AgentDetailPage() {
       name: "",
       persona: "",
       voiceStyle: "alloy",
+      autoStart: false,
     },
     values: agent ? {
       name: agent.name,
       persona: agent.persona || "",
       voiceStyle: agent.voiceStyle || "alloy",
+      autoStart: agent.autoStart || false,
     } : undefined,
   });
 
@@ -486,6 +490,28 @@ export default function AgentDetailPage() {
                           Choose the voice style for your agent
                         </FormDescription>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="autoStart"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Auto-Start Voice</FormLabel>
+                          <FormDescription>
+                            When enabled, the voice bot will start speaking automatically when a user opens the widget. When disabled, users must click the microphone to begin.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-auto-start"
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />

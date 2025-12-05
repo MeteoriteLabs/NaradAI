@@ -1,5 +1,5 @@
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
-import { MicButton, CloseButton, AgentAvatar, Waveform } from "./core/components";
+import { MicButton, CloseButton, AgentAvatar, Waveform, MuteButton } from "./core/components";
 
 const CARD_STYLES = {
   container: {
@@ -50,7 +50,9 @@ const CARD_STYLES = {
 export function CornerCard({
   isRecording,
   isSpeaking,
+  isMuted,
   onRecordToggle,
+  onMuteToggle,
   onClose,
   agentName,
   transcript,
@@ -121,7 +123,23 @@ export function CornerCard({
       </div>
 
       <div style={CARD_STYLES.footer}>
-        {isSpeaking && (
+        {isMuted && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{
+                width: "10px",
+                height: "10px",
+                borderRadius: "50%",
+                background: "#ef4444",
+              }}
+            />
+            <span style={{ fontSize: "13px", color: "#ef4444" }}>
+              Muted
+            </span>
+          </div>
+        )}
+
+        {!isMuted && isSpeaking && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <Waveform isActive={true} barCount={5} height={20} />
             <span style={{ fontSize: "13px", color: "#6b7280" }}>
@@ -130,7 +148,7 @@ export function CornerCard({
           </div>
         )}
 
-        {isRecording && (
+        {!isMuted && isRecording && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div
               style={{
@@ -148,6 +166,7 @@ export function CornerCard({
         )}
 
         <MicButton isRecording={isRecording} onClick={onRecordToggle} size="md" />
+        <MuteButton isMuted={isMuted} onClick={onMuteToggle} size="md" />
       </div>
 
       <style>{`

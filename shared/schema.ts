@@ -52,6 +52,7 @@ export const agents = pgTable("agents", {
   voiceStyle: text("voice_style").default("alloy"),
   widgetDesign: text("widget_design").default("voice-bar"), // "voice-bar" | "floating-bubble" | "corner-card"
   widgetColor: text("widget_color").default("#8b5cf6"), // Primary color for widget
+  autoStart: boolean("auto_start").default(false), // Start voice bot automatically on page load
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

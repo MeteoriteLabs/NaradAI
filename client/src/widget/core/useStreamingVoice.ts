@@ -5,6 +5,7 @@ interface StreamingVoiceState {
   isStreaming: boolean;
   isConnected: boolean;
   isAISpeaking: boolean;
+  isMuted: boolean;
   transcript: string;
   partialTranscript: string;
   audioLevel: number;
@@ -26,11 +27,15 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     isStreaming: false,
     isConnected: false,
     isAISpeaking: false,
+    isMuted: false,
     transcript: "",
     partialTranscript: "",
     audioLevel: 0,
     error: null,
   });
+
+  // Ref to track muted state for worklet message handler
+  const isMutedRef = useRef(false);
 
   // Refs for audio components
   const wsRef = useRef<WebSocket | null>(null);
@@ -44,6 +49,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const playbackContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef(false);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -140,6 +147,11 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     if (!playbackContextRef.current) {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
       console.log("[Narada Stream] Created playback AudioContext");
+      
+      // Create gain node for volume control
+      gainNodeRef.current = playbackContextRef.current.createGain();
+      gainNodeRef.current.connect(playbackContextRef.current.destination);
+      gainNodeRef.current.gain.value = isMutedRef.current ? 0 : 1;
     }
 
     // Resume AudioContext if suspended (required after user interaction in some browsers)
@@ -174,8 +186,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       return;
     }
 
-    if (!playbackContextRef.current) {
-      console.error("[Narada Stream] No playback context");
+    if (!playbackContextRef.current || !gainNodeRef.current) {
+      console.error("[Narada Stream] No playback context or gain node");
       return;
     }
 
@@ -183,10 +195,14 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     const buffer = audioQueueRef.current.shift()!;
     const source = playbackContextRef.current.createBufferSource();
     source.buffer = buffer;
-    source.connect(playbackContextRef.current.destination);
+    
+    // Connect to gain node for volume control
+    source.connect(gainNodeRef.current);
+    currentSourceRef.current = source;
     
     source.onended = () => {
       isPlayingRef.current = false;
+      currentSourceRef.current = null;
       if (audioQueueRef.current.length > 0) {
         console.log("[Narada Stream] Playing next chunk from queue");
       }
@@ -242,7 +258,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
       // Handle audio data from worklet
       workletNode.port.onmessage = (event) => {
-        if (event.data.type === "audio" && wsRef.current?.readyState === WebSocket.OPEN) {
+        // Only send audio if not muted
+        if (event.data.type === "audio" && wsRef.current?.readyState === WebSocket.OPEN && !isMutedRef.current) {
           // Send binary audio data directly
           wsRef.current.send(event.data.audioData);
         }
@@ -346,6 +363,38 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     }
   }, [state.isStreaming, startStreaming, stopStreaming]);
 
+  // Mute/unmute audio (both input and output)
+  const toggleMute = useCallback(() => {
+    const newMutedState = !isMutedRef.current;
+    isMutedRef.current = newMutedState;
+    
+    // Update gain node for output muting
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.setValueAtTime(
+        newMutedState ? 0 : 1,
+        playbackContextRef.current?.currentTime || 0
+      );
+    }
+    
+    console.log("[Narada Stream] Muted:", newMutedState);
+    setState(s => ({ ...s, isMuted: newMutedState }));
+  }, []);
+
+  // Set mute state directly
+  const setMuted = useCallback((muted: boolean) => {
+    isMutedRef.current = muted;
+    
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.setValueAtTime(
+        muted ? 0 : 1,
+        playbackContextRef.current?.currentTime || 0
+      );
+    }
+    
+    console.log("[Narada Stream] Set muted:", muted);
+    setState(s => ({ ...s, isMuted: muted }));
+  }, []);
+
   // Connect on mount, cleanup on unmount
   useEffect(() => {
     // Auto-connect when component mounts
@@ -366,13 +415,50 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     };
   }, []); // Empty deps - only run on mount/unmount
 
-  // Disconnect
+  // Full cleanup - stops everything and disconnects
   const disconnect = useCallback(() => {
+    console.log("[Narada Stream] Disconnecting and cleaning up...");
+    
+    // Stop streaming first
     stopStreaming();
+    
+    // Stop any playing audio
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.stop();
+      } catch (e) {
+        // Ignore errors from already stopped sources
+      }
+      currentSourceRef.current = null;
+    }
+    
+    // Clear audio queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    
+    // Close playback context
+    if (playbackContextRef.current) {
+      playbackContextRef.current.close();
+      playbackContextRef.current = null;
+      gainNodeRef.current = null;
+    }
+    
+    // Close WebSocket
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
+    
+    // Reset state
+    setState(s => ({
+      ...s,
+      isConnected: false,
+      isStreaming: false,
+      isAISpeaking: false,
+      audioLevel: 0,
+    }));
+    
+    console.log("[Narada Stream] Fully disconnected");
   }, [stopStreaming]);
 
   return {
@@ -382,6 +468,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     startStreaming,
     stopStreaming,
     toggleStreaming,
+    toggleMute,
+    setMuted,
     interruptAI,
   };
 }

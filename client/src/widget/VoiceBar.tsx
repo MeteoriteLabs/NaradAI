@@ -82,6 +82,18 @@ const VOICE_BAR_STYLES = {
     cursor: "pointer",
     transition: "background 0.2s ease",
   },
+  muteButton: (isMuted: boolean) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    border: "none",
+    background: isMuted ? "rgba(239, 68, 68, 0.2)" : "rgba(139, 92, 246, 0.2)",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  }),
   audioLevelBar: {
     position: "absolute" as const,
     bottom: "-4px",
@@ -128,6 +140,16 @@ function VolumeIcon({ size = 20, color = "#a78bfa" }: { size?: number; color?: s
   );
 }
 
+function VolumeOffIcon({ size = 20, color = "#a78bfa" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  );
+}
+
 function CloseIcon({ size = 16, color = "rgba(255, 255, 255, 0.7)" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,7 +163,9 @@ export function VoiceBar({
   isRecording,
   isPlaying,
   isSpeaking,
+  isMuted,
   onRecordToggle,
+  onMuteToggle,
   onClose,
   agentName,
   audioLevel,
@@ -177,21 +201,35 @@ export function VoiceBar({
             <>
               <Waveform isActive={isActive} barCount={16} height={40} />
               <span style={VOICE_BAR_STYLES.statusText}>
-                {isRecording
-                  ? "Listening..."
-                  : isSpeaking
-                    ? "Speaking..."
-                    : `Ask ${agentName}`}
+                {isMuted
+                  ? "Muted"
+                  : isRecording
+                    ? "Listening..."
+                    : isSpeaking
+                      ? "Speaking..."
+                      : `Ask ${agentName}`}
               </span>
             </>
           )}
         </div>
 
-        {isSpeaking && (
-          <div style={VOICE_BAR_STYLES.speakingIndicator}>
-            <VolumeIcon size={20} />
-          </div>
-        )}
+        <button
+          onClick={onMuteToggle}
+          style={VOICE_BAR_STYLES.muteButton(isMuted)}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+          data-testid="button-voice-mute"
+        >
+          {isMuted ? (
+            <VolumeOffIcon size={18} color="#ef4444" />
+          ) : (
+            <VolumeIcon size={18} />
+          )}
+        </button>
 
         <button
           onClick={onClose}
@@ -208,7 +246,7 @@ export function VoiceBar({
         </button>
       </div>
 
-      {isRecording && (
+      {isRecording && !isMuted && (
         <div style={VOICE_BAR_STYLES.audioLevelBar}>
           <div
             style={{
