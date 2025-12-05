@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,6 +16,8 @@ import AgentDetailPage from "@/pages/agent-detail";
 import LeadsPage from "@/pages/leads";
 import DocsPage from "@/pages/docs";
 import AccountPage from "@/pages/account";
+import PrivacyPage from "@/pages/privacy";
+import TermsPage from "@/pages/terms";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -73,15 +75,34 @@ function LoadingScreen() {
   );
 }
 
+function PublicRouter() {
+  return (
+    <Switch>
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/docs" component={DocsPage} />
+      <Route component={LandingPage} />
+    </Switch>
+  );
+}
+
 function AppRouter() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const [location] = useLocation();
+
+  const publicOnlyPaths = ["/privacy", "/terms"];
+  const isPublicOnlyPath = publicOnlyPaths.some(path => location === path);
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
+  if (isPublicOnlyPath) {
+    return <PublicRouter />;
+  }
+
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return <PublicRouter />;
   }
 
   if (user && !user.onboardingCompleted) {
