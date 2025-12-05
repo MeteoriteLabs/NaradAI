@@ -14,10 +14,27 @@ interface StreamingClient extends WebSocket {
 }
 
 export function setupStreamingWebSocket(server: Server) {
-  const wss = new WebSocketServer({ server, path: "/ws-stream" });
+  const wss = new WebSocketServer({ 
+    noServer: true,
+  });
 
-  wss.on("connection", (clientWs: StreamingClient) => {
-    console.log("[Stream] New client connection");
+  console.log("[Stream] WebSocket server initialized on /ws-stream");
+
+  // Handle upgrade requests explicitly
+  server.on("upgrade", (request, socket, head) => {
+    const pathname = new URL(request.url || "", `http://${request.headers.host}`).pathname;
+    
+    if (pathname === "/ws-stream") {
+      console.log("[Stream] Upgrade request for /ws-stream");
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    }
+    // Let other upgrade requests (like Vite HMR) pass through
+  });
+
+  wss.on("connection", (clientWs: StreamingClient, req) => {
+    console.log("[Stream] New client connection from:", req.url);
 
     clientWs.on("message", async (data: Buffer | ArrayBuffer) => {
       // Check if binary (audio data) or text (JSON message)

@@ -20,10 +20,25 @@ interface WebSocketClient extends WebSocket {
 }
 
 export function setupWebSocket(server: Server) {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true });
+
+  console.log("[Legacy WS] WebSocket server initialized on /ws");
+
+  // Handle upgrade requests explicitly
+  server.on("upgrade", (request, socket, head) => {
+    const pathname = new URL(request.url || "", `http://${request.headers.host}`).pathname;
+    
+    if (pathname === "/ws") {
+      console.log("[Legacy WS] Upgrade request for /ws");
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    }
+    // Let other upgrade requests pass through to other handlers
+  });
 
   wss.on("connection", (ws: WebSocketClient) => {
-    console.log("New WebSocket connection");
+    console.log("[Legacy WS] New WebSocket connection");
     ws.conversationHistory = [];
     ws.lastUserMessage = undefined;
 

@@ -525,6 +525,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Widget test page - Standalone HTML page for testing widget embed
+  app.get("/widget-test/:agentId", async (req, res) => {
+    const { agentId } = req.params;
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const apiBase = `${protocol}://${host}`;
+    
+    // Verify agent exists
+    const agent = await storage.getAgent(agentId);
+    if (!agent) {
+      return res.status(404).send('Agent not found');
+    }
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Test - ${agent.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: white;
+    }
+    .container {
+      text-align: center;
+      max-width: 600px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .agent-name {
+      font-size: 1.5rem;
+      opacity: 0.9;
+      margin-bottom: 32px;
+    }
+    .instruction {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 24px;
+    }
+    .instruction p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+    .tip {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    .debug-info {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(0,0,0,0.7);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      font-family: monospace;
+      max-width: 300px;
+    }
+    .debug-info h4 {
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .debug-info p {
+      opacity: 0.8;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="debug-info">
+    <h4>Debug Info</h4>
+    <p>Agent ID: ${agentId}</p>
+    <p>Design: ${agent.widgetDesign || 'voice-bar'}</p>
+    <p>API: ${apiBase}</p>
+  </div>
+  
+  <div class="container">
+    <h1>Widget Test Page</h1>
+    <p class="agent-name">${agent.name}</p>
+    
+    <div class="instruction">
+      <p>
+        The voice widget should appear at the bottom of this page.
+        Click on it to start a conversation with the AI assistant.
+      </p>
+    </div>
+    
+    <div class="tip">
+      <strong>Tip:</strong> Make sure to allow microphone access when prompted.
+      Open browser DevTools (F12) to see console logs for debugging.
+    </div>
+  </div>
+  
+  <!-- Narada AI Widget -->
+  <script 
+    src="${apiBase}/embed.js" 
+    data-agent-id="${agentId}" 
+    data-api-base="${apiBase}">
+  </script>
+</body>
+</html>`;
+    
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  });
+
   // Serve embed.js loader script for external websites
   app.get("/embed.js", (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');

@@ -135,8 +135,17 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Handle incoming audio chunks for playback
   const handleAudioChunk = useCallback(async (audioData: ArrayBuffer) => {
+    console.log("[Narada Stream] Received audio chunk:", audioData.byteLength, "bytes");
+    
     if (!playbackContextRef.current) {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      console.log("[Narada Stream] Created playback AudioContext");
+    }
+
+    // Resume AudioContext if suspended (required after user interaction in some browsers)
+    if (playbackContextRef.current.state === "suspended") {
+      await playbackContextRef.current.resume();
+      console.log("[Narada Stream] Resumed AudioContext");
     }
 
     try {
@@ -152,6 +161,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       audioBuffer.getChannelData(0).set(float32Array);
 
       audioQueueRef.current.push(audioBuffer);
+      console.log("[Narada Stream] Queued audio buffer, queue length:", audioQueueRef.current.length);
       playNextInQueue();
     } catch (e) {
       console.error("[Narada Stream] Audio decode error:", e);
@@ -164,7 +174,10 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       return;
     }
 
-    if (!playbackContextRef.current) return;
+    if (!playbackContextRef.current) {
+      console.error("[Narada Stream] No playback context");
+      return;
+    }
 
     isPlayingRef.current = true;
     const buffer = audioQueueRef.current.shift()!;
@@ -174,9 +187,13 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     
     source.onended = () => {
       isPlayingRef.current = false;
+      if (audioQueueRef.current.length > 0) {
+        console.log("[Narada Stream] Playing next chunk from queue");
+      }
       playNextInQueue();
     };
     
+    console.log("[Narada Stream] Playing audio buffer, duration:", buffer.duration.toFixed(3), "s");
     source.start();
   }, []);
 
