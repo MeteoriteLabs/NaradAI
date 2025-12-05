@@ -140,6 +140,57 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Demo login - bypasses OAuth for demo purposes
+  app.get("/api/demo-login", async (req, res) => {
+    try {
+      const demoUserId = "demo-user-001";
+      const demoClaims = {
+        sub: demoUserId,
+        email: "demo@narada.ai",
+        name: "Demo User",
+        picture: null,
+        given_name: "Demo",
+        family_name: "User",
+      };
+
+      // Upsert demo user with onboarding completed
+      await storage.upsertUser({
+        id: demoUserId,
+        email: demoClaims.email,
+        firstName: demoClaims.given_name,
+        lastName: demoClaims.family_name,
+        profileImageUrl: null,
+      });
+
+      // Mark onboarding as completed for demo user
+      await storage.updateUserOnboarding(demoUserId, {
+        companyName: "Demo Company",
+        companyWebsite: "https://demo.narada.ai",
+        role: "founder",
+        useCase: "product_tours",
+        onboardingCompleted: true,
+      });
+
+      // Create demo user session
+      const user: any = {
+        claims: demoClaims,
+        access_token: "demo-token",
+        expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
+      };
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Demo login error:", err);
+          return res.redirect("/?error=login_failed");
+        }
+        res.redirect("/");
+      });
+    } catch (error) {
+      console.error("Demo login error:", error);
+      res.status(500).json({ error: "Failed to create demo session" });
+    }
+  });
+
   // Logout
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
