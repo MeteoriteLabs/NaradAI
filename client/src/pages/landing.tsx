@@ -22,11 +22,7 @@ import {
   UserPlus,
   Headphones,
   Globe,
-  Laptop,
-  MessageCircle,
-  ChevronRight,
   Star,
-  Award,
   PieChart
 } from "lucide-react";
 import { Link } from "wouter";
@@ -184,24 +180,6 @@ export default function LandingPage() {
       icon: Globe,
       title: "Accessibility First",
       description: "Voice interface makes your site accessible to everyone, including those who prefer not to type."
-    }
-  ];
-
-  const widgetStyles = [
-    {
-      name: "Voice Bar",
-      description: "Clean, minimal bar at the bottom of the screen",
-      position: "bottom"
-    },
-    {
-      name: "Floating Bubble",
-      description: "Friendly chat bubble in the corner",
-      position: "corner"
-    },
-    {
-      name: "Corner Card",
-      description: "Elegant card with avatar and quick actions",
-      position: "corner-large"
     }
   ];
 
@@ -655,134 +633,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section 7: For Sales Teams */}
-        <section className="py-24 px-6">
-          <div className="container mx-auto max-w-6xl">
-            <motion.div 
-              className="text-center space-y-4 mb-16"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-sm font-medium">
-                <Award className="w-4 h-4" />
-                For Sales Teams
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold">Empower your sales team</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Give your team superpowers. Narada handles initial engagement so salespeople 
-                can focus on closing deals with qualified prospects.
-              </p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-              >
-                <Card className="h-full hover-elevate">
-                  <CardContent className="pt-6 space-y-4">
-                    <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold">Pre-Qualified Leads</h3>
-                    <p className="text-muted-foreground">
-                      Every lead comes with context - what they're looking for, their budget, 
-                      timeline, and specific needs. No more cold outreach.
-                    </p>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Conversation transcripts</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Intent scoring</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Product interests</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <Card className="h-full hover-elevate">
-                  <CardContent className="pt-6 space-y-4">
-                    <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                      <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold">Save Hours Daily</h3>
-                    <p className="text-muted-foreground">
-                      Stop answering the same questions. Narada handles FAQs, product info, 
-                      and initial discovery automatically.
-                    </p>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Automated responses</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>24/7 availability</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>No training needed</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <Card className="h-full hover-elevate">
-                  <CardContent className="pt-6 space-y-4">
-                    <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                      <BarChart3 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold">Performance Insights</h3>
-                    <p className="text-muted-foreground">
-                      Know what customers ask, what they care about, and where they 
-                      drop off. Data-driven selling.
-                    </p>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Conversation analytics</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>Lead source tracking</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-green-500" />
-                        <span>ROI dashboard</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 8: How It Works */}
+        {/* Section 7: How It Works */}
         <section id="how-it-works" className="py-24 px-6 bg-muted/30">
           <div className="container mx-auto max-w-6xl">
             <motion.div 
@@ -828,72 +679,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section 9: Widget Styles */}
-        <section className="py-24 px-6">
-          <div className="container mx-auto max-w-6xl">
-            <motion.div 
-              className="text-center space-y-4 mb-16"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <h2 className="text-3xl md:text-4xl font-bold">Choose your style</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Three beautiful widget designs to match your brand
-              </p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {widgetStyles.map((style, index) => (
-                <motion.div
-                  key={style.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Card className="h-full hover-elevate overflow-hidden">
-                    <div className="aspect-[4/3] bg-gradient-to-br from-muted/50 to-muted/20 relative">
-                      <div className="absolute inset-0 flex items-end justify-center p-4">
-                        {style.position === "bottom" && (
-                          <div className="w-full h-14 bg-card border rounded-lg flex items-center justify-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                              <Mic className="w-4 h-4 text-primary-foreground" />
-                            </div>
-                            <span className="text-sm text-muted-foreground">Tap to speak...</span>
-                          </div>
-                        )}
-                        {style.position === "corner" && (
-                          <div className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                            <MessageCircle className="w-6 h-6 text-primary-foreground" />
-                          </div>
-                        )}
-                        {style.position === "corner-large" && (
-                          <div className="absolute bottom-4 right-4 w-48 bg-card border rounded-lg p-3 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                                <Sparkles className="w-4 h-4 text-primary-foreground" />
-                              </div>
-                              <span className="text-sm font-medium">Need help?</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Click to start a voice conversation</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <CardContent className="pt-4">
-                      <h3 className="font-semibold mb-1">{style.name}</h3>
-                      <p className="text-sm text-muted-foreground">{style.description}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Section 10: Testimonials */}
+        {/* Section 8: Testimonials */}
         <section className="py-24 px-6 bg-muted/30">
           <div className="container mx-auto max-w-6xl">
             <motion.div 
@@ -938,7 +724,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section 11: Pricing */}
+        {/* Section 9: Pricing */}
         <section id="pricing" className="py-24 px-6">
           <div className="container mx-auto max-w-4xl">
             <motion.div 
@@ -1015,7 +801,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section 12: Final CTA */}
+        {/* Section 10: Final CTA */}
         <section className="py-24 px-6 bg-gradient-to-b from-background to-muted/30">
           <div className="container mx-auto max-w-4xl text-center">
             <motion.div 
