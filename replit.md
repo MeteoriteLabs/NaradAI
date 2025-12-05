@@ -199,20 +199,27 @@ narada-ai/
 
 ## Authentication
 
-### Auth Flow (Replit Auth with Google/GitHub/Apple support)
+### Auth Flow (Google OAuth 2.0)
 - Unauthenticated users see landing page at `/`
-- Login via `/api/login` (redirects to Replit Auth)
+- Login via `/api/login` (redirects to Google OAuth)
+- Google OAuth callback at `/api/callback`
 - First-time users go through onboarding at `/onboarding`
 - Authenticated users with completed onboarding → `/agents`
 - All API routes are protected with `isAuthenticated` middleware
 - User data is scoped by `userId` for multi-tenant isolation
+- Sessions stored in PostgreSQL using connect-pg-simple
 
 ### Auth Endpoints
 - `GET /api/auth/user` - Get current authenticated user
 - `POST /api/auth/onboarding` - Submit onboarding details
-- `GET /api/login` - Initiate Replit Auth login
+- `GET /api/login` - Initiate Google OAuth login
+- `GET /api/callback` - Google OAuth callback handler
 - `GET /api/logout` - Logout and clear session
-- `GET /api/auth/callback` - OAuth callback handler
+
+### Required Environment Variables for Auth
+- `GOOGLE_CLIENT_ID` - Google OAuth Client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth Client Secret
+- `SESSION_SECRET` - Session encryption key (min 32 chars)
 
 ## UI Architecture
 
@@ -239,8 +246,21 @@ The agent detail page (`/agents/:id`) uses a tabbed interface:
 - Touch-friendly targets and spacing
 
 ## Recent Changes
+- 2024-12-05: Migrated to Google OAuth + Comprehensive Documentation
+  - Replaced Replit Auth with direct Google OAuth 2.0 using openid-client
+  - Created googleAuth.ts module with full OIDC implementation
+  - Updated login/callback routes for Google authentication
+  - Created comprehensive README.md with:
+    - Complete local development setup guide
+    - AWS deployment instructions (EC2, Elastic Beanstalk, App Runner)
+    - Voice Agent System Architecture documentation
+    - WebSocket protocol specification
+    - AI processing pipeline details
+    - Database schema documentation
+    - All package dependencies listed
+  - Added .env.example for easy environment setup
+  - Fixed WebSocket conversation/lead storage to match schema
 - 2024-12-05: Full authentication and multi-tenancy
-  - Added Replit Auth integration with Google/GitHub/Apple support
   - Created beautiful landing page with hero, features, and pricing
   - Built onboarding wizard to collect company details (name, website, role, use case)
   - Added users and sessions tables with onboarding fields

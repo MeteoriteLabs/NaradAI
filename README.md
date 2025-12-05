@@ -836,6 +836,604 @@ Add this script to any website:
 
 ---
 
+## Voice Agent System Architecture
+
+This section provides a detailed technical explanation of how the voice agent system works end-to-end.
+
+### System Overview Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              EXTERNAL WEBSITE                                    │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  <script src="https://narada.ai/embed.js" data-agent-id="abc123">       │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                      │                                           │
+│                                      ▼                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                         NARADA WIDGET (Shadow DOM)                       │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  │    │
+│  │  │ Floating     │  │ Chat         │  │ Lead         │  │ Joyride     │  │    │
+│  │  │ Avatar       │  │ Interface    │  │ Form         │  │ Tours       │  │    │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                    WebSocket (wss://) │ REST API (https://)
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              NARADA BACKEND                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                         WebSocket Server (/ws)                           │    │
+│  │  • Message Handler (text/audio)                                          │    │
+│  │  • OpenAI Integration (GPT-3.5 + Whisper)                                │    │
+│  │  • Function Calling (start_flow, capture_lead)                           │    │
+│  │  • Conversation Memory                                                   │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                      │                                           │
+│                                      ▼                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                         PostgreSQL Database                              │    │
+│  │  agents │ knowledge_items │ flows │ steps │ leads │ conversations        │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Details
+
+#### 1. Embed Script (`client/embed/embed.ts`)
+
+The embed script is the entry point for the widget. When loaded on any website:
+
+```javascript
+// How it works:
+1. Reads `data-agent-id` from script tag
+2. Creates Shadow DOM container for style isolation
+3. Loads widget.js and widget.css bundles
+4. Initializes WebSocket connection
+5. Sets up event tracking (IntersectionObserver for visibility, click listeners)
+6. Mounts the React widget component
+```
+
+**Key Features:**
+- **Shadow DOM Isolation**: Widget styles don't leak into host page
+- **Dynamic WebSocket URL**: Computes ws/wss based on protocol
+- **Event Tracking**: Observes elements with `data-event-tag` attribute
+
+```html
+<!-- Example Usage -->
+<script 
+  src="https://your-domain.com/embed.js" 
+  data-agent-id="agent_abc123"
+  data-api-base="https://api.narada.ai"
+  async>
+</script>
+```
+
+#### 2. Widget Component (`client/src/widget/Widget.tsx`)
+
+The main React component that orchestrates all widget functionality:
+
+```typescript
+// State Management
+- isChatOpen: boolean      // Chat panel visibility
+- isLeadFormOpen: boolean  // Lead form visibility
+- isRecording: boolean     // Voice recording state
+- messages: Message[]      // Chat history
+- isConnected: boolean     // WebSocket connection status
+- joyrideSteps: Step[]     // Current guided tour steps
+- runJoyride: boolean      // Tour active state
+```
+
+**Lifecycle:**
+1. Fetch agent data via REST API
+2. Establish WebSocket connection
+3. Send `init` message with context (URL, user agent)
+4. Receive greeting from agent
+5. Handle user interactions (text, voice, flows)
+
+#### 3. Floating Avatar (`client/src/widget/FloatingAvatar.tsx`)
+
+The persistent UI element visible on all pages:
+
+- **Collapsed State**: Shows chat bubble icon with hover tooltip
+- **Expanded State**: Shows close button + microphone button
+- **Recording State**: Microphone turns red, records audio
+
+```typescript
+// Voice Recording Flow
+1. User clicks mic button → getUserMedia() for audio access
+2. MediaRecorder captures audio chunks
+3. After 10 seconds (or stop), creates Blob
+4. Converts to base64 and sends via WebSocket
+```
+
+#### 4. Chat Interface (`client/src/widget/ChatInterface.tsx`)
+
+Real-time chat UI with:
+- Message history with timestamps
+- User/assistant message bubbles
+- Connection status indicator
+- Text input with send button
+
+#### 5. Lead Form (`client/src/widget/LeadForm.tsx`)
+
+Captures visitor contact information:
+- Name (required)
+- Email (required)
+- Phone (optional)
+- Message/Notes (optional)
+
+Triggered when AI calls `capture_lead()` function.
+
+#### 6. Joyride Flow Wrapper (`client/src/widget/JoyrideFlowWrapper.tsx`)
+
+Integrates React Joyride for guided tours:
+- Receives steps from WebSocket `start_flow` message
+- Highlights page elements with tooltips
+- Reports step completion back to server
+- Styled to match Narada branding
+
+---
+
+### WebSocket Protocol
+
+#### Connection Flow
+
+```
+Client                                          Server
+  │                                               │
+  │──────── WebSocket Connect (/ws) ─────────────▶│
+  │                                               │
+  │──────── { type: "init", agentId, context } ──▶│
+  │                                               │
+  │◀─────── { type: "connected", agent } ─────────│
+  │                                               │
+  │◀─────── { type: "message", content } ─────────│ (greeting)
+  │                                               │
+```
+
+#### Message Types
+
+| Type | Direction | Payload | Description |
+|------|-----------|---------|-------------|
+| `init` | Client → Server | `{ agentId, context: { url, userAgent } }` | Initialize session |
+| `connected` | Server → Client | `{ agent: { id, name } }` | Connection confirmed |
+| `message` | Bidirectional | `{ content: string }` | Text message |
+| `audio` | Client → Server | `{ audioData: base64 }` | Voice input |
+| `transcription` | Server → Client | `{ text: string }` | Speech-to-text result |
+| `start_flow` | Server → Client | `{ flowId, flowName, steps[] }` | Trigger guided tour |
+| `capture_lead` | Server → Client | `{}` | Show lead form |
+| `lead_captured` | Client → Server | `{ leadData: { name, email, phone, notes } }` | Submit lead |
+| `lead_captured_success` | Server → Client | `{}` | Lead saved confirmation |
+| `step_completed` | Client → Server | `{ stepIndex }` | Tour step finished |
+| `error` | Server → Client | `{ message }` | Error occurred |
+
+---
+
+### AI Processing Pipeline
+
+#### 1. System Prompt Construction
+
+When a session starts, the server builds a dynamic system prompt:
+
+```typescript
+function buildSystemPrompt(agent, knowledge, flows, context) {
+  let prompt = `You are ${agent.name}, an AI assistant.`;
+  
+  // Add persona
+  if (agent.persona) {
+    prompt += `\nPersona: ${agent.persona}`;
+  }
+  
+  // Inject knowledge base
+  if (knowledge.length > 0) {
+    prompt += `\nKnowledge Base:\n`;
+    knowledge.forEach(item => {
+      prompt += `Q: ${item.question}\nA: ${item.answer}\n`;
+    });
+  }
+  
+  // List available flows
+  if (flows.length > 0) {
+    prompt += `\nAvailable Guided Tours:\n`;
+    flows.forEach(flow => {
+      prompt += `- ${flow.name}: ${flow.pageUrl}\n`;
+    });
+  }
+  
+  // Add context
+  if (context?.url) {
+    prompt += `\nUser is on: ${context.url}`;
+  }
+  
+  // Define available functions
+  prompt += `\nYou have access to:
+  - start_flow(flow_name): Start a guided tour
+  - capture_lead(): Capture contact information`;
+  
+  return prompt;
+}
+```
+
+#### 2. OpenAI Function Calling
+
+The AI can trigger actions via function calls:
+
+```typescript
+// Available Functions
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "start_flow",
+      description: "Start a guided product tour",
+      parameters: {
+        type: "object",
+        properties: {
+          flow_name: { type: "string" }
+        },
+        required: ["flow_name"]
+      }
+    }
+  },
+  {
+    type: "function", 
+    function: {
+      name: "capture_lead",
+      description: "Capture user contact information",
+      parameters: { type: "object", properties: {} }
+    }
+  }
+];
+```
+
+#### 3. Tool Execution Loop
+
+```typescript
+async function processOpenAIResponse(ws, flows, agent) {
+  while (true) {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo-0125",
+      messages: ws.conversationHistory,
+      tools: tools,
+      tool_choice: "auto"
+    });
+    
+    const response = completion.choices[0].message;
+    
+    if (response.tool_calls) {
+      // Execute each function call
+      for (const call of response.tool_calls) {
+        const result = await executeFunctionCall(ws, call, flows);
+        // Add result to conversation
+        ws.conversationHistory.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify(result)
+        });
+      }
+      continue; // Loop for follow-up response
+    } else {
+      // Send text response to client
+      ws.send(JSON.stringify({ type: "message", content: response.content }));
+      break;
+    }
+  }
+}
+```
+
+#### 4. Voice Processing
+
+```typescript
+async function handleAudioMessage(ws, message) {
+  // 1. Decode base64 audio
+  const audioBuffer = Buffer.from(message.audioData, "base64");
+  
+  // 2. Transcribe with Whisper
+  const transcription = await openai.audio.transcriptions.create({
+    file: await toFile(audioBuffer, "audio.webm"),
+    model: "whisper-1"
+  });
+  
+  // 3. Send transcription to client
+  ws.send(JSON.stringify({ 
+    type: "transcription", 
+    text: transcription.text 
+  }));
+  
+  // 4. Process as text message
+  await handleChatMessage(ws, { content: transcription.text });
+}
+```
+
+---
+
+### Guided Flows (Joyride) System
+
+#### Flow Configuration
+
+Flows are configured in the dashboard with:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Flow identifier (e.g., "Product Tour") |
+| `pageUrl` | URL pattern where flow applies |
+| `steps[]` | Ordered list of tour steps |
+
+Each step contains:
+
+| Field | Description |
+|-------|-------------|
+| `selector` | CSS selector for target element |
+| `title` | Step heading |
+| `tooltipText` | Detailed description |
+| `voiceScript` | Text for TTS (future) |
+| `order` | Step sequence number |
+
+#### Triggering a Flow
+
+1. **AI Decides**: Based on conversation context, AI calls `start_flow("Product Tour")`
+2. **Server Processes**: Fetches flow + steps from database
+3. **WebSocket Message**: Sends `start_flow` with complete step data
+4. **Widget Receives**: Transforms steps to Joyride format
+5. **Tour Starts**: Joyride highlights elements sequentially
+
+```typescript
+// Server sends:
+{
+  type: "start_flow",
+  flowId: "flow_123",
+  flowName: "Product Tour",
+  steps: [
+    {
+      id: "step_1",
+      selector: "#signup-button",
+      title: "Sign Up",
+      tooltip_text: "Click here to create your account",
+      voice_script: "First, let's create your account..."
+    },
+    // ... more steps
+  ]
+}
+
+// Widget transforms to Joyride format:
+const joyrideSteps = steps.map((step, index) => ({
+  target: step.selector,
+  content: step.tooltip_text,
+  title: step.title,
+  placement: "auto",
+  disableBeacon: index === 0
+}));
+```
+
+---
+
+### Event Tracking System
+
+#### Dashboard Configuration
+
+Event tags are configured per agent:
+
+| Field | Description |
+|-------|-------------|
+| `label` | Human-readable name |
+| `selector` | CSS selector or `data-event-tag` value |
+| `eventType` | `view`, `click`, `scroll`, `custom` |
+| `pagePattern` | URL pattern for matching |
+
+#### Widget Tracking
+
+```typescript
+// Visibility tracking with IntersectionObserver
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const tag = entry.target.getAttribute('data-event-tag');
+      console.log('[Narada] Element visible:', tag);
+      // TODO: Send to backend via WebSocket
+    }
+  });
+}, { threshold: 0.5 });
+
+// Click tracking
+document.addEventListener('click', (e) => {
+  const tag = e.target.getAttribute('data-event-tag');
+  if (tag) {
+    console.log('[Narada] Element clicked:', tag);
+    // TODO: Send to backend via WebSocket
+  }
+});
+```
+
+#### Adding Event Tags to Your Website
+
+```html
+<!-- Track when pricing section is viewed -->
+<section id="pricing" data-event-tag="pricing-section">
+  ...
+</section>
+
+<!-- Track CTA button clicks -->
+<button data-event-tag="cta-signup">Sign Up Free</button>
+```
+
+---
+
+### Lead Capture Flow
+
+#### Sequence Diagram
+
+```
+User                Widget              Server              Database
+  │                   │                   │                    │
+  │ "I want to talk"  │                   │                    │
+  │──────────────────▶│                   │                    │
+  │                   │  { message }      │                    │
+  │                   │──────────────────▶│                    │
+  │                   │                   │ AI: capture_lead() │
+  │                   │                   │────────────────────│
+  │                   │ { capture_lead }  │                    │
+  │                   │◀──────────────────│                    │
+  │   Lead Form       │                   │                    │
+  │◀──────────────────│                   │                    │
+  │                   │                   │                    │
+  │  Submit form      │                   │                    │
+  │──────────────────▶│                   │                    │
+  │                   │ { lead_captured } │                    │
+  │                   │──────────────────▶│                    │
+  │                   │                   │  INSERT lead       │
+  │                   │                   │───────────────────▶│
+  │                   │ { success }       │                    │
+  │                   │◀──────────────────│                    │
+  │  "Thank you!"     │                   │                    │
+  │◀──────────────────│                   │                    │
+```
+
+---
+
+### Database Schema Details
+
+#### Core Tables
+
+```sql
+-- Agents: AI assistant configurations
+CREATE TABLE agents (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR NOT NULL,        -- Owner (multi-tenant)
+  name VARCHAR NOT NULL,
+  persona TEXT,                     -- Personality description
+  voice_style VARCHAR,              -- Voice configuration
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Knowledge Items: Q&A pairs for context
+CREATE TABLE knowledge_items (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES agents(id),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Event Tags: Trackable page elements
+CREATE TABLE event_tags (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES agents(id),
+  label VARCHAR NOT NULL,
+  selector VARCHAR NOT NULL,
+  event_type VARCHAR NOT NULL,      -- view, click, scroll, custom
+  page_pattern VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Flows: Guided tour definitions
+CREATE TABLE flows (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES agents(id),
+  name VARCHAR NOT NULL,
+  page_url VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Steps: Individual tour steps
+CREATE TABLE steps (
+  id SERIAL PRIMARY KEY,
+  flow_id INTEGER REFERENCES flows(id),
+  selector VARCHAR NOT NULL,
+  title VARCHAR NOT NULL,
+  tooltip_text TEXT,
+  voice_script TEXT,
+  "order" INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Leads: Captured visitor information
+CREATE TABLE leads (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES agents(id),
+  name VARCHAR NOT NULL,
+  email VARCHAR NOT NULL,
+  phone VARCHAR,
+  notes TEXT,
+  source VARCHAR,                   -- Page URL where captured
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Conversations: Chat transcripts
+CREATE TABLE conversations (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES agents(id),
+  user_message TEXT,
+  agent_response TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+### Agent Configuration Options
+
+#### Persona
+
+The persona field customizes the AI's personality:
+
+```
+Example: "You are a friendly sales assistant for a SaaS company. 
+Be helpful, concise, and always try to understand the user's 
+needs before suggesting solutions. Use casual but professional 
+language."
+```
+
+#### Voice Style
+
+The voice style field configures text-to-speech:
+
+| Value | Description |
+|-------|-------------|
+| `alloy` | Neutral, balanced voice |
+| `echo` | Warm, conversational |
+| `fable` | Expressive, storytelling |
+| `onyx` | Deep, authoritative |
+| `nova` | Friendly, upbeat |
+| `shimmer` | Clear, professional |
+
+---
+
+### Security Considerations
+
+#### Current Implementation
+
+- **Session-based auth**: Dashboard uses Google OAuth + PostgreSQL sessions
+- **Multi-tenant isolation**: All queries filter by `userId`
+- **WebSocket**: Agent ID provided by client (widget)
+
+#### Production Recommendations
+
+1. **Widget Authentication**
+   ```typescript
+   // Generate signed tokens for widgets
+   const widgetToken = jwt.sign({ agentId }, SECRET, { expiresIn: '24h' });
+   ```
+
+2. **Rate Limiting**
+   ```typescript
+   // Limit messages per connection
+   const rateLimiter = new RateLimiter({ max: 100, windowMs: 60000 });
+   ```
+
+3. **Input Validation**
+   ```typescript
+   // Validate all WebSocket messages
+   const schema = z.object({
+     type: z.enum(['init', 'message', 'audio']),
+     content: z.string().max(4000).optional()
+   });
+   ```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues

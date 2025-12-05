@@ -134,8 +134,10 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
 
   await storage.createConversation({
     agentId: ws.agentId,
-    userMessage: "[Widget Connected]",
-    agentResponse: greeting,
+    transcript: [
+      { role: "system", text: "[Widget Connected]", timestamp: new Date().toISOString() },
+      { role: "assistant", text: greeting, timestamp: new Date().toISOString() }
+    ],
   });
 }
 
@@ -260,11 +262,12 @@ async function processOpenAIResponse(
       });
 
       for (const toolCall of responseMessage.tool_calls) {
+        const func = (toolCall as any).function;
         const functionResult = await executeFunctionCall(
           ws,
           {
-            name: toolCall.function.name,
-            arguments: toolCall.function.arguments,
+            name: func.name,
+            arguments: func.arguments,
           },
           flows,
           agent
@@ -294,8 +297,10 @@ async function processOpenAIResponse(
       if (ws.agentId && ws.lastUserMessage) {
         await storage.createConversation({
           agentId: ws.agentId,
-          userMessage: ws.lastUserMessage,
-          agentResponse: responseMessage.content,
+          transcript: [
+            { role: "user", text: ws.lastUserMessage, timestamp: new Date().toISOString() },
+            { role: "assistant", text: responseMessage.content, timestamp: new Date().toISOString() }
+          ],
         });
         ws.lastUserMessage = undefined;
       }
@@ -446,8 +451,10 @@ async function handleLeadCaptured(ws: WebSocketClient, message: any) {
       name: leadData.name,
       email: leadData.email,
       phone: leadData.phone || "",
-      notes: leadData.notes || "",
-      source: ws.context?.url || "widget",
+      context: { 
+        notes: leadData.notes || "",
+        source: ws.context?.url || "widget" 
+      },
     });
 
     const formSubmissionMessage = `[User submitted lead form: Name: ${leadData.name}, Email provided]`;
@@ -481,8 +488,11 @@ async function handleLeadCaptured(ws: WebSocketClient, message: any) {
     
     await storage.createConversation({
       agentId: ws.agentId,
-      userMessage: originalUserMessage,
-      agentResponse: confirmationMessage,
+      transcript: [
+        { role: "user", text: originalUserMessage, timestamp: new Date().toISOString() },
+        { role: "assistant", text: confirmationMessage, timestamp: new Date().toISOString() }
+      ],
+      leadCaptured: true,
     });
     
     ws.lastUserMessage = undefined;
