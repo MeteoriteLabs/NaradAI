@@ -3,33 +3,74 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAgentSchema, insertKnowledgeItemSchema, insertEventTagSchema, insertFlowSchema, insertStepSchema, insertLeadSchema } from "@shared/schema";
 import { setupWebSocket } from "./websocket";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Agents
-  app.post("/api/agents", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Update user onboarding
+  app.post('/api/auth/onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { companyName, companyWebsite, role, useCase } = req.body;
+      const user = await storage.updateUserOnboarding(userId, {
+        companyName,
+        companyWebsite,
+        role,
+        useCase,
+        onboardingCompleted: true,
+      });
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating onboarding:", error);
+      res.status(500).json({ message: "Failed to update onboarding" });
+    }
+  });
+
+  // Agents - Protected routes
+  app.post("/api/agents", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
       const data = insertAgentSchema.parse(req.body);
-      const agent = await storage.createAgent(data);
+      const agent = await storage.createAgent({ ...data, userId });
       res.json(agent);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.get("/api/agents", async (req, res) => {
+  app.get("/api/agents", isAuthenticated, async (req: any, res) => {
     try {
-      const agents = await storage.getAllAgents();
+      const userId = req.user.claims.sub;
+      const agents = await storage.getAgentsByUser(userId);
       res.json(agents);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/agents/:id", async (req, res) => {
+  app.get("/api/agents/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const agent = await storage.getAgent(req.params.id);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
+      }
+      if (agent.userId && agent.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       res.json(agent);
     } catch (error: any) {
@@ -37,34 +78,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/agents/:id", async (req, res) => {
+  app.put("/api/agents/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const data = insertAgentSchema.parse(req.body);
-      const agent = await storage.updateAgent(req.params.id, data);
-      if (!agent) {
+      const userId = req.user.claims.sub;
+      const existingAgent = await storage.getAgent(req.params.id);
+      if (!existingAgent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+      if (existingAgent.userId && existingAgent.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = insertAgentSchema.parse(req.body);
+      const agent = await storage.updateAgent(req.params.id, { ...data, userId });
       res.json(agent);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/agents/:id", async (req, res) => {
+  app.delete("/api/agents/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteAgent(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const existingAgent = await storage.getAgent(req.params.id);
+      if (!existingAgent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+      if (existingAgent.userId && existingAgent.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const success = await storage.deleteAgent(req.params.id);
       res.json({ message: "Agent deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Knowledge Items
-  app.post("/api/agents/:agentId/knowledge", async (req, res) => {
+  // Helper to verify agent ownership
+  async function verifyAgentOwnership(agentId: string, userId: string): Promise<boolean> {
+    const agent = await storage.getAgent(agentId);
+    if (!agent) return false;
+    if (agent.userId && agent.userId !== userId) return false;
+    return true;
+  }
+
+  // Knowledge Items - Protected routes
+  app.post("/api/agents/:agentId/knowledge", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = insertKnowledgeItemSchema.parse({
         ...req.body,
         agentId: req.params.agentId,
@@ -76,8 +139,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agents/:agentId/knowledge", async (req, res) => {
+  app.get("/api/agents/:agentId/knowledge", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const items = await storage.getKnowledgeItems(req.params.agentId);
       res.json(items);
     } catch (error: any) {
@@ -85,21 +152,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/knowledge/:id", async (req, res) => {
+  app.delete("/api/knowledge/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteKnowledgeItem(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const item = await storage.getKnowledgeItem(req.params.id);
+      if (!item) {
         return res.status(404).json({ error: "Knowledge item not found" });
       }
+      if (!await verifyAgentOwnership(item.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const success = await storage.deleteKnowledgeItem(req.params.id);
       res.json({ message: "Knowledge item deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Event Tags
-  app.post("/api/agents/:agentId/tags", async (req, res) => {
+  // Event Tags - Protected routes
+  app.post("/api/agents/:agentId/tags", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = insertEventTagSchema.parse({
         ...req.body,
         agentId: req.params.agentId,
@@ -111,8 +187,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agents/:agentId/tags", async (req, res) => {
+  app.get("/api/agents/:agentId/tags", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const tags = await storage.getEventTags(req.params.agentId);
       res.json(tags);
     } catch (error: any) {
@@ -120,21 +200,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tags/:id", async (req, res) => {
+  app.delete("/api/tags/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteEventTag(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const tag = await storage.getEventTag(req.params.id);
+      if (!tag) {
         return res.status(404).json({ error: "Event tag not found" });
       }
+      if (!await verifyAgentOwnership(tag.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const success = await storage.deleteEventTag(req.params.id);
       res.json({ message: "Event tag deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Flows
-  app.post("/api/agents/:agentId/flows", async (req, res) => {
+  // Flows - Protected routes
+  app.post("/api/agents/:agentId/flows", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = insertFlowSchema.parse({
         ...req.body,
         agentId: req.params.agentId,
@@ -146,8 +235,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agents/:agentId/flows", async (req, res) => {
+  app.get("/api/agents/:agentId/flows", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const flowsList = await storage.getFlows(req.params.agentId);
       res.json(flowsList);
     } catch (error: any) {
@@ -155,21 +248,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/flows/:id", async (req, res) => {
+  app.delete("/api/flows/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteFlow(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const flow = await storage.getFlow(req.params.id);
+      if (!flow) {
         return res.status(404).json({ error: "Flow not found" });
       }
+      if (!await verifyAgentOwnership(flow.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const success = await storage.deleteFlow(req.params.id);
       res.json({ message: "Flow deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
+  
+  // Helper to verify flow ownership via its agent
+  async function verifyFlowOwnership(flowId: string, userId: string): Promise<boolean> {
+    const flow = await storage.getFlow(flowId);
+    if (!flow) return false;
+    return await verifyAgentOwnership(flow.agentId, userId);
+  }
 
-  // Steps
-  app.post("/api/flows/:flowId/steps", async (req, res) => {
+  // Steps - Protected routes
+  app.post("/api/flows/:flowId/steps", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyFlowOwnership(req.params.flowId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = insertStepSchema.parse({
         ...req.body,
         flowId: req.params.flowId,
@@ -181,8 +290,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/flows/:flowId/steps", async (req, res) => {
+  app.get("/api/flows/:flowId/steps", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyFlowOwnership(req.params.flowId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const stepsList = await storage.getSteps(req.params.flowId);
       res.json(stepsList);
     } catch (error: any) {
@@ -190,19 +303,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/steps/:id", async (req, res) => {
+  app.delete("/api/steps/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteStep(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const step = await storage.getStep(req.params.id);
+      if (!step) {
         return res.status(404).json({ error: "Step not found" });
       }
+      if (!await verifyFlowOwnership(step.flowId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const success = await storage.deleteStep(req.params.id);
       res.json({ message: "Step deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Leads
+  // Leads - Protected routes (POST is public for widget capture, GET is protected)
   app.post("/api/agents/:agentId/leads", async (req, res) => {
     try {
       const data = insertLeadSchema.parse({
@@ -216,8 +334,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agents/:agentId/leads", async (req, res) => {
+  app.get("/api/agents/:agentId/leads", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const leadsList = await storage.getLeads(req.params.agentId);
       res.json(leadsList);
     } catch (error: any) {
@@ -225,9 +347,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analytics
-  app.get("/api/agents/:agentId/analytics", async (req, res) => {
+  // Analytics - Protected route
+  app.get("/api/agents/:agentId/analytics", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await verifyAgentOwnership(req.params.agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const analytics = await storage.getAnalytics(req.params.agentId);
       res.json({
         total_conversations: analytics.totalConversations,
@@ -241,11 +367,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Widget Installation Verification
-  app.post("/api/agents/:agentId/verify-installation", async (req, res) => {
+  // Widget Installation Verification - Protected route
+  app.post("/api/agents/:agentId/verify-installation", isAuthenticated, async (req: any, res) => {
     try {
-      const { url } = req.body;
+      const userId = req.user.claims.sub;
       const agentId = req.params.agentId;
+      
+      if (!await verifyAgentOwnership(agentId, userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const { url } = req.body;
 
       if (!url) {
         return res.status(400).json({ error: "URL is required" });

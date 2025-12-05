@@ -1,12 +1,43 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Users table for Replit Auth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  companyName: varchar("company_name"),
+  companyWebsite: varchar("company_website"),
+  role: varchar("role"),
+  useCase: varchar("use_case"),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+
 // Agents table
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   persona: text("persona"),
   voiceStyle: text("voice_style").default("alloy"),

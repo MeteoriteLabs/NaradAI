@@ -1,4 +1,5 @@
 import {
+  users,
   agents,
   knowledgeItems,
   eventTags,
@@ -6,6 +7,8 @@ import {
   steps,
   leads,
   conversations,
+  type User,
+  type UpsertUser,
   type Agent,
   type InsertAgent,
   type KnowledgeItem,
@@ -25,29 +28,39 @@ import { db } from "./db";
 import { eq, desc, and, isNotNull, count } from "drizzle-orm";
 
 export interface IStorage {
+  // Users
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserOnboarding(id: string, data: Partial<UpsertUser>): Promise<User | undefined>;
+
   // Agents
   getAgent(id: string): Promise<Agent | undefined>;
+  getAgentsByUser(userId: string): Promise<Agent[]>;
   getAllAgents(): Promise<Agent[]>;
   createAgent(agent: InsertAgent): Promise<Agent>;
   updateAgent(id: string, agent: InsertAgent): Promise<Agent | undefined>;
   deleteAgent(id: string): Promise<boolean>;
 
   // Knowledge Items
+  getKnowledgeItem(id: string): Promise<KnowledgeItem | undefined>;
   getKnowledgeItems(agentId: string): Promise<KnowledgeItem[]>;
   createKnowledgeItem(item: InsertKnowledgeItem): Promise<KnowledgeItem>;
   deleteKnowledgeItem(id: string): Promise<boolean>;
 
   // Event Tags
+  getEventTag(id: string): Promise<EventTag | undefined>;
   getEventTags(agentId: string): Promise<EventTag[]>;
   createEventTag(tag: InsertEventTag): Promise<EventTag>;
   deleteEventTag(id: string): Promise<boolean>;
 
   // Flows
+  getFlow(id: string): Promise<Flow | undefined>;
   getFlows(agentId: string): Promise<Flow[]>;
   createFlow(flow: InsertFlow): Promise<Flow>;
   deleteFlow(id: string): Promise<boolean>;
 
   // Steps
+  getStep(id: string): Promise<Step | undefined>;
   getSteps(flowId: string): Promise<Step[]>;
   createStep(step: InsertStep): Promise<Step>;
   deleteStep(id: string): Promise<boolean>;
@@ -70,10 +83,47 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserOnboarding(id: string, data: Partial<UpsertUser>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
   // Agents
   async getAgent(id: string): Promise<Agent | undefined> {
     const [agent] = await db.select().from(agents).where(eq(agents.id, id));
     return agent || undefined;
+  }
+
+  async getAgentsByUser(userId: string): Promise<Agent[]> {
+    return await db.select().from(agents).where(eq(agents.userId, userId));
   }
 
   async getAllAgents(): Promise<Agent[]> {
@@ -100,6 +150,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Knowledge Items
+  async getKnowledgeItem(id: string): Promise<KnowledgeItem | undefined> {
+    const [item] = await db.select().from(knowledgeItems).where(eq(knowledgeItems.id, id));
+    return item || undefined;
+  }
+
   async getKnowledgeItems(agentId: string): Promise<KnowledgeItem[]> {
     return await db
       .select()
@@ -118,6 +173,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Event Tags
+  async getEventTag(id: string): Promise<EventTag | undefined> {
+    const [tag] = await db.select().from(eventTags).where(eq(eventTags.id, id));
+    return tag || undefined;
+  }
+
   async getEventTags(agentId: string): Promise<EventTag[]> {
     return await db
       .select()
@@ -136,6 +196,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Flows
+  async getFlow(id: string): Promise<Flow | undefined> {
+    const [flow] = await db.select().from(flows).where(eq(flows.id, id));
+    return flow || undefined;
+  }
+
   async getFlows(agentId: string): Promise<Flow[]> {
     return await db
       .select()
@@ -154,6 +219,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Steps
+  async getStep(id: string): Promise<Step | undefined> {
+    const [step] = await db.select().from(steps).where(eq(steps.id, id));
+    return step || undefined;
+  }
+
   async getSteps(flowId: string): Promise<Step[]> {
     return await db
       .select()
