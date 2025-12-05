@@ -140,9 +140,15 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Demo login - bypasses OAuth for demo purposes
+  // Demo login - bypasses OAuth for demo purposes (super admin only)
   app.get("/api/demo-login", async (req, res) => {
     try {
+      // Check for super admin authorization header
+      const authHeader = req.headers["x-superadmin-auth"];
+      if (authHeader !== "narada-superadmin-authorized") {
+        return res.status(403).json({ error: "Super admin access required" });
+      }
+
       const demoUserId = "demo-user-001";
       const demoClaims = {
         sub: demoUserId,
@@ -188,6 +194,63 @@ export async function setupAuth(app: Express) {
     } catch (error) {
       console.error("Demo login error:", error);
       res.status(500).json({ error: "Failed to create demo session" });
+    }
+  });
+
+  // NaradaAI login - bypasses OAuth for NaradaAI demo (super admin only)
+  app.get("/api/naradaai-login", async (req, res) => {
+    try {
+      // Check for super admin authorization header
+      const authHeader = req.headers["x-superadmin-auth"];
+      if (authHeader !== "narada-superadmin-authorized") {
+        return res.status(403).json({ error: "Super admin access required" });
+      }
+
+      const naradaUserId = "naradaai-user-001";
+      const naradaClaims = {
+        sub: naradaUserId,
+        email: "naradaai@narada.ai",
+        name: "NaradaAI",
+        picture: null,
+        given_name: "Narada",
+        family_name: "AI",
+      };
+
+      // Upsert NaradaAI user with onboarding completed
+      await storage.upsertUser({
+        id: naradaUserId,
+        email: naradaClaims.email,
+        firstName: naradaClaims.given_name,
+        lastName: naradaClaims.family_name,
+        profileImageUrl: null,
+      });
+
+      // Mark onboarding as completed for NaradaAI user
+      await storage.updateUserOnboarding(naradaUserId, {
+        companyName: "Narada AI",
+        companyWebsite: "https://narada.ai",
+        role: "founder",
+        useCase: "customer_support",
+        onboardingCompleted: true,
+      });
+
+      // Create NaradaAI user session
+      const user: any = {
+        claims: naradaClaims,
+        access_token: "naradaai-token",
+        expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
+      };
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error("NaradaAI login error:", err);
+          return res.redirect("/?error=login_failed");
+        }
+        res.redirect("/");
+      });
+    } catch (error) {
+      console.error("NaradaAI login error:", error);
+      res.status(500).json({ error: "Failed to create NaradaAI session" });
     }
   });
 
