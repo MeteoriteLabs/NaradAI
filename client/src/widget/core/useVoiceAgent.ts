@@ -6,6 +6,7 @@ import { Step } from "react-joyride";
 interface UseVoiceAgentOptions {
   agentId: string;
   websocketUrl: string;
+  apiBase?: string;
   onFlowStart?: (steps: Step[]) => void;
   onLeadCapture?: () => void;
 }
@@ -28,6 +29,7 @@ interface UseVoiceAgentReturn extends VoiceAgentState {
 export function useVoiceAgent({
   agentId,
   websocketUrl,
+  apiBase = '',
   onFlowStart,
   onLeadCapture,
 }: UseVoiceAgentOptions): UseVoiceAgentReturn {
@@ -50,11 +52,13 @@ export function useVoiceAgent({
   const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    fetch(`/api/agents/${agentId}`)
+    // Use public widget endpoint for agent config
+    const agentUrl = apiBase ? `${apiBase}/api/widget/agents/${agentId}` : `/api/widget/agents/${agentId}`;
+    fetch(agentUrl)
       .then((res) => res.json())
       .then((data) => setAgentData(data))
       .catch((err) => console.error("Failed to fetch agent:", err));
-  }, [agentId]);
+  }, [agentId, apiBase]);
 
   const handleWebSocketMessage = useCallback((data: WebSocketMessage) => {
     switch (data.type) {

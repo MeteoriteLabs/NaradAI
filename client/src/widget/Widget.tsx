@@ -9,6 +9,7 @@ import type { WidgetDesign, WidgetDesignProps, WidgetTriggerProps } from "./core
 interface WidgetProps {
   agentId: string;
   websocketUrl: string;
+  apiBase?: string;
 }
 
 const WIDGET_DESIGNS: Record<
@@ -23,7 +24,7 @@ const WIDGET_DESIGNS: Record<
   "corner-card": { Component: CornerCard, Trigger: CornerCardTrigger },
 };
 
-export function Widget({ agentId, websocketUrl }: WidgetProps) {
+export function Widget({ agentId, websocketUrl, apiBase }: WidgetProps) {
   const {
     isOpen,
     isRecording,
@@ -42,7 +43,7 @@ export function Widget({ agentId, websocketUrl }: WidgetProps) {
     handleFlowComplete,
     handleStepChange,
     submitLead,
-  } = useVoiceAgent({ agentId, websocketUrl });
+  } = useVoiceAgent({ agentId, websocketUrl, apiBase });
 
   if (!agentData) {
     return null;

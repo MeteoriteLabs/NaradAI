@@ -2,7 +2,7 @@ import { createRoot, Root } from "react-dom/client";
 import { Widget } from "./Widget";
 import { createElement } from "react";
 
-interface WidgetMountOptions {
+export interface WidgetMountOptions {
   agentId: string;
   websocketUrl: string;
   apiBase?: string;
@@ -20,6 +20,7 @@ export function mount(container: HTMLElement, options: WidgetMountOptions) {
     createElement(Widget, {
       agentId: options.agentId,
       websocketUrl: options.websocketUrl,
+      apiBase: options.apiBase,
     })
   );
 }
