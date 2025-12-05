@@ -207,6 +207,7 @@ export async function setupAuth(app: Express) {
       }
 
       const naradaUserId = "naradaai-user-001";
+      const naradaAgentId = "naradaai-agent-001";
       const naradaClaims = {
         sub: naradaUserId,
         email: "naradaai@narada.ai",
@@ -233,6 +234,40 @@ export async function setupAuth(app: Express) {
         useCase: "customer_support",
         onboardingCompleted: true,
       });
+
+      // Check if NaradaAI agent exists, create if not
+      const existingAgent = await storage.getAgent(naradaAgentId);
+      if (!existingAgent) {
+        await storage.createAgentWithId({
+          id: naradaAgentId,
+          userId: naradaUserId,
+          name: "NaradaAI",
+          persona: "I am Narada, your intelligent voice guide for the Narada AI platform. I help website visitors understand how our voice-based guidance system works, explain features like lead capture, guided tours, and AI-powered conversations. I'm friendly, knowledgeable, and ready to demonstrate the power of voice-based website assistance.",
+          voiceStyle: "nova",
+          widgetDesign: "floating-bubble",
+          widgetColor: "#8b5cf6",
+          autoStart: false,
+        });
+
+        // Add some knowledge items for the NaradaAI agent
+        await storage.createKnowledgeItem({
+          agentId: naradaAgentId,
+          question: "What is Narada AI?",
+          answer: "Narada AI is a voice-based website guide platform that helps businesses engage visitors with intelligent voice conversations. It can capture leads, provide guided tours, answer questions, and enhance user experience through natural voice interaction."
+        });
+
+        await storage.createKnowledgeItem({
+          agentId: naradaAgentId,
+          question: "How does the voice widget work?",
+          answer: "The Narada AI widget is a simple script you embed on your website. When visitors click the voice button, they can have a natural conversation with your AI agent. The agent can answer questions, guide users through your site, and capture contact information seamlessly."
+        });
+
+        await storage.createKnowledgeItem({
+          agentId: naradaAgentId,
+          question: "What are the benefits of using Narada AI?",
+          answer: "With Narada AI, businesses see up to 85% higher lead capture rates, 3x faster sales cycles, and 40% higher conversion rates. Our voice-guided experience reduces bounce rates by 45% and increases time on site by 60%. It's like having a 24/7 sales rep on every page."
+        });
+      }
 
       // Create NaradaAI user session
       const user: any = {
