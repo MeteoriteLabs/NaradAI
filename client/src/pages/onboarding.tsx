@@ -84,8 +84,15 @@ export default function OnboardingPage({ user }: OnboardingProps) {
   });
 
   const onSubmit = (data: OnboardingFormValues) => {
+    console.log("Form submitted with data:", data);
     onboardingMutation.mutate(data);
   };
+
+  // Debug: Log form errors
+  const formErrors = form.formState.errors;
+  if (Object.keys(formErrors).length > 0) {
+    console.log("Form validation errors:", formErrors);
+  }
 
   const nextStep = () => {
     if (step === 1) {
@@ -207,7 +214,7 @@ export default function OnboardingPage({ user }: OnboardingProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Your role *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-role">
                                 <SelectValue placeholder="Select your role" />
@@ -267,7 +274,7 @@ export default function OnboardingPage({ user }: OnboardingProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Primary use case *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-use-case">
                                 <SelectValue placeholder="Select your main use case" />
