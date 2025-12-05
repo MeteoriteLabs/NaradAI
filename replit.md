@@ -1,318 +1,39 @@
 # Narada AI - Voice-Guided Website Experience Platform
 
-## Product Overview
-Narada AI is a voice-based website guide that understands user behavior, listens to speech, reads page context, and guides visitors through digital journeys using contextual AI + UI highlights + voice narration — embeddable with one script.
+## Overview
+Narada AI is a platform offering a voice-based website guide that enhances user experience by understanding behavior, processing speech, analyzing page context, and providing guidance through contextual AI, UI highlights, and voice narration. It's embeddable with a single script, aiming to transform digital journeys for website visitors.
 
-## Architecture
+## User Preferences
+No specific user preferences were provided in the original `replit.md` file.
+
+## System Architecture
 
 ### Two-Part System
+The platform consists of a **Control Plane (Dashboard)**, a React TypeScript web application for businesses to configure AI voice agents, manage knowledge bases, define event tags, create guided journeys, and view analytics. The second part is a **Runtime Widget (Embeddable Snippet)**, a lightweight script that can be embedded on any website to provide the voice-guided experience.
 
-**1. Control Plane (Dashboard)** - React TypeScript web app where businesses:
-- Create AI voice agents with personas
-- Add knowledge base (Q&A)
-- Define Event Tags (sections/elements to track)
-- Create Journeys / Guided Flows with Joyride
-- Configure voice style
-- Generate embed snippet
-- View analytics, transcripts, and leads
+### Widget Architecture
+The widget uses `embed.js` as a lightweight loader for the main `widget.js` React bundle, which includes all design and voice features. It tracks user events (view, click, scroll, custom), handles voice input/output via OpenAI TTS/Whisper API, communicates with the backend via WebSocket for real-time interaction, and runs guided tours using React Joyride. It supports three widget designs: VoiceBar, FloatingBubble, and CornerCard, and includes lead capture forms and dynamic design based on agent configuration.
 
-**2. Runtime Widget (Embeddable Snippet)** - Lightweight script for any website:
-```html
-<script src="https://cdn.narada.ai/embed.js" data-agent-id="narada_123" async></script>
-```
+### Technical Implementations
+- **Frontend**: React 18 with TypeScript, Wouter for routing, Tailwind CSS + Shadcn UI for styling, React Hook Form with Zod for forms, TanStack Query for data fetching, React Joyride for guided tours, and Vite for building.
+- **Backend**: Node.js with Express.js for REST API and WebSocket, PostgreSQL with Drizzle ORM, OpenAI Realtime API for voice AI (speech-to-text, text-to-speech, function calling), `ws` library for WebSocket, Zod schemas for validation, and Google OAuth 2.0 for authentication.
 
-The widget:
-- Tracks event tags (view, click, scroll, custom)
-- Handles voice input/output with OpenAI Realtime API
-- Connects to backend via WebSocket
-- Runs Joyride for guided tours
-- Displays responses in voice + bubble UI
-- Uses Shadow DOM for style isolation
+### Database Schema
+Key entities include `users`, `sessions`, `agents` (AI voice agent configurations), `knowledge_items` (Q&A), `event_tags` (tracking), `flows` (guided journeys), `steps` (flow steps), `leads` (captured info), and `conversations` (transcripts, analytics).
 
-## Tech Stack
+### UI/UX Decisions
+- **Dual Design Strategy**: The Dashboard follows a Material Design-inspired aesthetic for productivity, while the Widget is inspired by Intercom/Linear for approachability.
+- **Typography**: Inter for primary text, JetBrains Mono for code/data.
+- **Colors**: Deep blue primary, light blue-gray accent, neutral grays for backgrounds.
+- **Responsive Design**: UI elements like agent cards and tab sections are designed to adapt to various screen sizes.
 
-### Frontend (React + TypeScript)
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter for SPA navigation
-- **Styling**: Tailwind CSS + Shadcn UI components
-- **Forms**: React Hook Form with Zod validation
-- **Data Fetching**: TanStack Query (React Query)
-- **Guided Tours**: React Joyride
-- **Build**: Vite
+### Feature Specifications
+- **MVP Features**: Agent creation/management, knowledge base Q&A, event tagging, journey builder, embeddable widget, real-time WebSocket communication, OpenAI voice pipeline, context-aware AI, floating voice avatar with chat UI, lead capture forms, analytics dashboard, and Shadow DOM widget isolation.
+- **Core API Routes**: REST endpoints for managing agents, knowledge, tags, flows, leads, and analytics, along with public widget endpoints for `embed.js`, `widget.js`, and public agent configuration. A WebSocket endpoint (`/ws`) handles real-time voice interaction.
 
-### Backend (Node.js + Express)
-- **Framework**: Express.js for REST API and WebSocket
-- **Database**: PostgreSQL with Drizzle ORM
-- **Voice AI**: OpenAI Realtime API (speech-to-text, text-to-speech, function calling)
-- **Real-time**: WebSocket (ws library) for bidirectional communication
-- **Validation**: Zod schemas (drizzle-zod)
-- **Auth**: Google OAuth 2.0 via openid-client
-
-### Database Schema (PostgreSQL)
-
-**users** - User accounts (via Replit Auth)
-- id, email, firstName, lastName, profileImageUrl, companyName, companyWebsite, role, useCase, onboardingCompleted, createdAt, updatedAt
-
-**sessions** - User sessions for authentication
-- sid, sess, expire
-
-**agents** - AI voice agent configurations
-- id, userId (owner), name, persona, voiceStyle, widgetDesign (voice_bar | floating_bubble | corner_card), createdAt
-
-**knowledge_items** - Q&A knowledge base
-- id, agentId, question, answer, createdAt
-
-**event_tags** - Page elements/sections to track
-- id, agentId, label, selector, eventType, pagePattern, createdAt
-
-**flows** - Guided journey definitions
-- id, agentId, name, pageUrl, createdAt
-
-**steps** - Individual steps in a flow
-- id, flowId, selector, title, tooltipText, voiceScript, order, createdAt
-
-**leads** - Captured visitor information
-- id, agentId, name, phone, email, context, createdAt
-
-**conversations** - Chat transcripts and analytics
-- id, agentId, transcript, context, flowsTriggered, leadCaptured, createdAt
-
-## Design System
-
-### Dual Design Strategy
-- **Dashboard**: Material Design-inspired for productivity and data density
-- **Widget**: Intercom/Linear-inspired for approachability and trust
-
-### Typography
-- **Primary**: Inter (headings, body text)
-- **Code/Data**: JetBrains Mono
-
-### Colors
-- Primary: Deep blue (220, 85%, 35%) - professional, trustworthy
-- Accent: Light blue-gray for highlights
-- Background: Neutral grays with subtle elevation
-
-### Spacing System
-Tailwind units: 2, 4, 6, 8, 12, 16, 24 (px multiples)
-
-## Key Features
-
-### MVP Features
-1. Agent creation and management dashboard
-2. Knowledge base Q&A system
-3. Event tagging system for user tracking
-4. Journey/flow builder with Joyride highlights
-5. Embeddable widget script (Google Analytics-style)
-6. Real-time WebSocket communication
-7. Voice pipeline with OpenAI Realtime API
-8. Context-aware AI responses
-9. Floating voice avatar with chat UI
-10. Lead capture forms
-11. Analytics dashboard
-12. Shadow DOM widget isolation
-
-### Future Features
-- PDF and website crawler for knowledge automation
-- ElevenLabs premium voice upgrade
-- Advanced analytics with sentiment analysis
-- Multi-language support
-- A/B testing framework
-
-## Development Workflow
-
-### Frontend Development
-```bash
-npm run dev  # Starts Vite dev server + Express backend
-```
-
-### Backend Development (Python)
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 3001
-```
-
-### Database Migrations
-```bash
-npm run db:push  # Push schema changes to PostgreSQL
-```
-
-### Widget Build
-```bash
-npm run build:widget  # Creates embeddable widget bundle
-```
-
-## API Routes
-
-### REST Endpoints
-- `POST /api/agents` - Create agent
-- `GET /api/agents/:id` - Get agent
-- `POST /api/agents/:id/knowledge` - Add knowledge
-- `GET /api/agents/:id/knowledge` - List knowledge
-- `POST /api/agents/:id/tags` - Create event tag
-- `GET /api/agents/:id/tags` - List event tags
-- `POST /api/agents/:id/flows` - Create flow
-- `GET /api/agents/:id/flows` - List flows
-- `POST /api/flows/:id/steps` - Create step
-- `GET /api/flows/:id/steps` - List steps
-- `POST /api/agents/:id/leads` - Capture lead
-- `GET /api/agents/:id/leads` - List leads
-- `GET /api/agents/:id/analytics` - Get analytics
-- `POST /api/agents/:id/verify-installation` - Verify widget installation on external site
-
-### WebSocket
-- `/ws/agents/:agentId/sessions/:sessionId` - Real-time voice interaction
-
-## Project Structure
-
-```
-narada-ai/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/             # Shadcn UI components
-│   │   │   ├── agent-sections/ # Agent-scoped section components
-│   │   │   │   ├── shared/     # Reusable CRUD helpers
-│   │   │   │   │   ├── types.ts
-│   │   │   │   │   ├── useAgentResource.ts
-│   │   │   │   │   ├── ResourceList.tsx
-│   │   │   │   │   └── CreateDialog.tsx
-│   │   │   │   ├── knowledge-section.tsx
-│   │   │   │   ├── event-tags-section.tsx
-│   │   │   │   ├── flows-section.tsx
-│   │   │   │   └── analytics-section.tsx
-│   │   │   └── app-sidebar.tsx # Navigation sidebar
-│   │   ├── widget/             # Embeddable widget components
-│   │   │   ├── core/           # Shared widget infrastructure
-│   │   │   │   ├── types.ts
-│   │   │   │   ├── useVoiceAgent.ts
-│   │   │   │   └── components.tsx
-│   │   │   ├── VoiceBar.tsx
-│   │   │   ├── FloatingBubble.tsx
-│   │   │   ├── CornerCard.tsx
-│   │   │   ├── Widget.tsx      # Main widget component
-│   │   │   ├── LeadForm.tsx
-│   │   │   └── JoyrideFlowWrapper.tsx
-│   │   ├── pages/
-│   │   │   ├── agents.tsx      # Agent cards grid (main page)
-│   │   │   ├── agent-detail.tsx # Agent detail with tabs
-│   │   │   ├── leads.tsx       # Leads management
-│   │   │   └── widget-demo.tsx # Widget preview
-│   │   ├── lib/            # Utils, query client
-│   │   └── App.tsx         # Main app with routing
-│   └── index.html
-├── server/                 # Express TypeScript backend
-│   ├── routes.ts          # API route handlers
-│   ├── storage.ts         # Database storage interface
-│   ├── websocket.ts       # WebSocket handler for voice AI
-│   ├── googleAuth.ts      # Google OAuth 2.0 implementation
-│   └── index-dev.ts       # Development server entry
-├── shared/
-│   └── schema.ts          # Shared TypeScript types & Drizzle schema
-└── design_guidelines.md   # Design system documentation
-```
-
-## Authentication
-
-### Auth Flow (Google OAuth 2.0)
-- Unauthenticated users see landing page at `/`
-- Login via `/api/login` (redirects to Google OAuth)
-- Google OAuth callback at `/api/callback`
-- First-time users go through onboarding at `/onboarding`
-- Authenticated users with completed onboarding → `/agents`
-- All API routes are protected with `isAuthenticated` middleware
-- User data is scoped by `userId` for multi-tenant isolation
-- Sessions stored in PostgreSQL using connect-pg-simple
-
-### Auth Endpoints
-- `GET /api/auth/user` - Get current authenticated user
-- `POST /api/auth/onboarding` - Submit onboarding details
-- `GET /api/login` - Initiate Google OAuth login
-- `GET /api/callback` - Google OAuth callback handler
-- `GET /api/logout` - Logout and clear session
-
-### Required Environment Variables for Auth
-- `GOOGLE_CLIENT_ID` - Google OAuth Client ID
-- `GOOGLE_CLIENT_SECRET` - Google OAuth Client Secret
-- `SESSION_SECRET` - Session encryption key (min 32 chars)
-
-## UI Architecture
-
-### Navigation Routes
-- `/` → Landing page (unauthenticated) or redirect to `/agents` (authenticated)
-- `/onboarding` → First-time user onboarding wizard
-- `/agents` → Agent cards grid (main agents list)
-- `/agents/:id` → Agent detail page with tabbed sections
-- `/leads` → Leads management page
-- `/docs` → Developer documentation with searchable content
-
-### Agent Detail Tabs
-The agent detail page (`/agents/:id`) uses a tabbed interface:
-1. **Settings** - Agent name, persona, voice style configuration
-2. **Knowledge** - Q&A pairs management
-3. **Tags** - Event tracking tags (view, click, scroll, custom)
-4. **Flows** - Guided tour steps with Joyride integration
-5. **Analytics** - Conversation stats and recent interactions
-6. **Embed** - Widget embed code + installation verification tool
-
-### Responsive Design
-- Agent cards: 1 column mobile, 2 tablet, 3-4 desktop
-- Tab sections stack vertically on mobile
-- Touch-friendly targets and spacing
-
-## Recent Changes
-- 2024-12-05: Major codebase refactoring for reusability and standardization
-  - Created shared widget core infrastructure (types.ts, useVoiceAgent.ts, components.tsx)
-  - Refactored all three widget designs (VoiceBar, FloatingBubble, CornerCard) to use shared components
-  - Created reusable agent-section helpers (ResourceList, CreateDialog, useAgentResource) for CRUD patterns
-  - Added UpdateAgent partial type for proper PATCH updates with Zod validation
-  - Updated storage interface to accept partial updates with proper TypeScript types
-  - Fixed widget design save errors by updating updateAgentSchema
-  - Standardized schema with proper exports (WidgetDesign, EventType types)
-  - Updated README and replit.md with new project structure documentation
-- 2024-12-05: Migrated to Google OAuth + Comprehensive Documentation
-  - Replaced Replit Auth with direct Google OAuth 2.0 using openid-client
-  - Created googleAuth.ts module with full OIDC implementation
-  - Updated login/callback routes for Google authentication
-  - Created comprehensive README.md with:
-    - Complete local development setup guide
-    - AWS deployment instructions (EC2, Elastic Beanstalk, App Runner)
-    - Voice Agent System Architecture documentation
-    - WebSocket protocol specification
-    - AI processing pipeline details
-    - Database schema documentation
-    - All package dependencies listed
-  - Added .env.example for easy environment setup
-  - Fixed WebSocket conversation/lead storage to match schema
-- 2024-12-05: Full authentication and multi-tenancy
-  - Created beautiful landing page with hero, features, and pricing
-  - Built onboarding wizard to collect company details (name, website, role, use case)
-  - Added users and sessions tables with onboarding fields
-  - All API routes protected with isAuthenticated middleware
-  - Multi-tenant data isolation via userId scoping
-  - Ownership verification on all CRUD operations
-  - Auth-aware routing (landing → onboarding → dashboard)
-- 2024-12-04: Self-hosted embed.js endpoint
-  - Added `/embed.js` endpoint that serves the widget JavaScript
-  - Widget no longer requires external CDN (cdn.narada.ai)
-  - Embed code now uses app's own URL: `${origin}/embed.js`
-  - Self-contained widget with Shadow DOM, chat UI, event tracking
-- 2024-12-03: Widget installation verification feature
-  - Added verification endpoint to check if widget is installed on external sites
-  - Enhanced Embed tab with URL input and verification status display
-  - Color-coded feedback (green=connected, yellow=partial, red=not found)
-- 2024-12-03: Developer documentation page
-  - Comprehensive docs at /docs with 8 sections
-  - Searchable content with TOC sidebar
-  - Code examples with copy-to-clipboard
-  - Mobile-responsive accordion layout
-- 2024-12-03: Major UI refactor - Card-based agent management
-  - Renamed Dashboard to Agents with responsive card grid
-  - Created dedicated agent detail page with tabbed sections
-  - Extracted reusable agent-scoped section components
-  - Simplified sidebar navigation (Agents, Leads, Documentation)
-- WebSocket implementation with OpenAI tool-calling loop
-- Embeddable widget with Shadow DOM isolation
-- Initial project setup with schema definition
-- Configured Inter and JetBrains Mono fonts
-- Set up dual design system (Dashboard + Widget)
+## External Dependencies
+- **OpenAI Realtime API**: Used for speech-to-text, text-to-speech, and function calling for voice AI capabilities.
+- **PostgreSQL**: The primary database for storing all application data.
+- **Google OAuth 2.0**: Utilized for user authentication and authorization.
+- **React Joyride**: Integrated for building and displaying guided tours within the widget.
+- **Tailwind CSS & Shadcn UI**: Frontend styling and UI component library.
