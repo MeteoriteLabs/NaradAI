@@ -11,6 +11,7 @@ import {
   type UpsertUser,
   type Agent,
   type InsertAgent,
+  type UpdateAgent,
   type KnowledgeItem,
   type InsertKnowledgeItem,
   type EventTag,
@@ -38,7 +39,7 @@ export interface IStorage {
   getAgentsByUser(userId: string): Promise<Agent[]>;
   getAllAgents(): Promise<Agent[]>;
   createAgent(agent: InsertAgent): Promise<Agent>;
-  updateAgent(id: string, agent: InsertAgent): Promise<Agent | undefined>;
+  updateAgent(id: string, agent: UpdateAgent): Promise<Agent | undefined>;
   deleteAgent(id: string): Promise<boolean>;
 
   // Knowledge Items
@@ -135,7 +136,7 @@ export class DatabaseStorage implements IStorage {
     return newAgent;
   }
 
-  async updateAgent(id: string, agent: InsertAgent): Promise<Agent | undefined> {
+  async updateAgent(id: string, agent: UpdateAgent): Promise<Agent | undefined> {
     const [updated] = await db
       .update(agents)
       .set(agent)

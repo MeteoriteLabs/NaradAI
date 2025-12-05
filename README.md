@@ -111,7 +111,27 @@ narada-ai/
 │   │   ├── components/
 │   │   │   ├── ui/             # Shadcn UI components
 │   │   │   ├── agent-sections/ # Agent detail section components
+│   │   │   │   ├── shared/     # Reusable section helpers
+│   │   │   │   │   ├── types.ts
+│   │   │   │   │   ├── useAgentResource.ts
+│   │   │   │   │   ├── ResourceList.tsx
+│   │   │   │   │   └── CreateDialog.tsx
+│   │   │   │   ├── knowledge-section.tsx
+│   │   │   │   ├── event-tags-section.tsx
+│   │   │   │   ├── flows-section.tsx
+│   │   │   │   └── analytics-section.tsx
 │   │   │   └── app-sidebar.tsx # Navigation sidebar
+│   │   ├── widget/             # Embeddable widget components
+│   │   │   ├── core/           # Shared widget infrastructure
+│   │   │   │   ├── types.ts    # Widget types
+│   │   │   │   ├── useVoiceAgent.ts # Core voice agent hook
+│   │   │   │   └── components.tsx # Reusable UI primitives
+│   │   │   ├── VoiceBar.tsx    # Voice bar widget design
+│   │   │   ├── FloatingBubble.tsx # Floating bubble design
+│   │   │   ├── CornerCard.tsx  # Corner card design
+│   │   │   ├── Widget.tsx      # Main widget component
+│   │   │   ├── LeadForm.tsx    # Lead capture form
+│   │   │   └── JoyrideFlowWrapper.tsx # Guided tour wrapper
 │   │   ├── pages/              # Route pages
 │   │   │   ├── landing.tsx     # Public landing page
 │   │   │   ├── onboarding.tsx  # User onboarding wizard
@@ -122,7 +142,6 @@ narada-ai/
 │   │   ├── hooks/              # Custom React hooks
 │   │   ├── lib/                # Utilities & query client
 │   │   └── App.tsx             # Main app with routing
-│   ├── embed/                  # Embeddable widget source
 │   └── index.html
 ├── server/                     # Backend Express application
 │   ├── index-dev.ts            # Development server entry
@@ -688,6 +707,29 @@ Add this script to any website:
 - **Guided Tours**: Highlights elements with tooltips
 - **Lead Capture**: Collects visitor information
 - **Shadow DOM**: Styles isolated from host page
+
+### Widget Design System
+
+The widget supports three visual designs, configurable per agent:
+
+| Design | Description |
+|--------|-------------|
+| **Voice Bar** | A sleek horizontal bar with mic button, animated waveforms, and transcript display. Great for conversational interfaces. |
+| **Floating Bubble** | A compact circular button that expands into a chat panel. Minimal footprint. |
+| **Corner Card** | A card-style interface with visible avatar and chat history. More prominent presence. |
+
+All designs share a core infrastructure:
+
+#### Core Components (`client/src/widget/core/`)
+- `types.ts` - Shared TypeScript interfaces for widget state
+- `useVoiceAgent.ts` - Central hook for WebSocket, recording, TTS, transcript handling
+- `components.tsx` - Reusable UI primitives (MicButton, StatusIndicator, Waveform, TranscriptBubble)
+
+#### Shared Primitives
+- **MicButton**: Animated microphone button with pulse/recording states
+- **StatusIndicator**: Connection/listening/processing status display
+- **Waveform**: Audio visualization bars
+- **TranscriptBubble**: Chat message display component
 
 ---
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertAgentSchema, insertKnowledgeItemSchema, insertEventTagSchema, insertFlowSchema, insertStepSchema, insertLeadSchema } from "@shared/schema";
+import { insertAgentSchema, updateAgentSchema, insertKnowledgeItemSchema, insertEventTagSchema, insertFlowSchema, insertStepSchema, insertLeadSchema } from "@shared/schema";
 import { setupWebSocket } from "./websocket";
 import { setupAuth, isAuthenticated } from "./googleAuth";
 
@@ -88,14 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingAgent.userId && existingAgent.userId !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Allow partial updates - merge with existing data
-      const updateData: any = {};
-      if (req.body.name !== undefined) updateData.name = req.body.name;
-      if (req.body.persona !== undefined) updateData.persona = req.body.persona;
-      if (req.body.voiceStyle !== undefined) updateData.voiceStyle = req.body.voiceStyle;
-      if (req.body.widgetDesign !== undefined) updateData.widgetDesign = req.body.widgetDesign;
-      if (req.body.widgetColor !== undefined) updateData.widgetColor = req.body.widgetColor;
-      
+      const updateData = updateAgentSchema.parse(req.body);
       const agent = await storage.updateAgent(req.params.id, { ...updateData, userId });
       res.json(agent);
     } catch (error: any) {

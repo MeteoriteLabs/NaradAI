@@ -40,12 +40,13 @@ The widget:
 - **Guided Tours**: React Joyride
 - **Build**: Vite
 
-### Backend (Python + FastAPI)
-- **Framework**: FastAPI for REST API and WebSocket
-- **Database**: PostgreSQL with SQLAlchemy ORM
+### Backend (Node.js + Express)
+- **Framework**: Express.js for REST API and WebSocket
+- **Database**: PostgreSQL with Drizzle ORM
 - **Voice AI**: OpenAI Realtime API (speech-to-text, text-to-speech, function calling)
-- **Real-time**: WebSocket for bidirectional communication
-- **Validation**: Pydantic models
+- **Real-time**: WebSocket (ws library) for bidirectional communication
+- **Validation**: Zod schemas (drizzle-zod)
+- **Auth**: Google OAuth 2.0 via openid-client
 
 ### Database Schema (PostgreSQL)
 
@@ -56,7 +57,7 @@ The widget:
 - sid, sess, expire
 
 **agents** - AI voice agent configurations
-- id, userId (owner), name, persona, voiceStyle, createdAt
+- id, userId (owner), name, persona, voiceStyle, widgetDesign (voice_bar | floating_bubble | corner_card), createdAt
 
 **knowledge_items** - Q&A knowledge base
 - id, agentId, question, answer, createdAt
@@ -171,11 +172,27 @@ narada-ai/
 │   │   ├── components/
 │   │   │   ├── ui/             # Shadcn UI components
 │   │   │   ├── agent-sections/ # Agent-scoped section components
+│   │   │   │   ├── shared/     # Reusable CRUD helpers
+│   │   │   │   │   ├── types.ts
+│   │   │   │   │   ├── useAgentResource.ts
+│   │   │   │   │   ├── ResourceList.tsx
+│   │   │   │   │   └── CreateDialog.tsx
 │   │   │   │   ├── knowledge-section.tsx
 │   │   │   │   ├── event-tags-section.tsx
 │   │   │   │   ├── flows-section.tsx
 │   │   │   │   └── analytics-section.tsx
 │   │   │   └── app-sidebar.tsx # Navigation sidebar
+│   │   ├── widget/             # Embeddable widget components
+│   │   │   ├── core/           # Shared widget infrastructure
+│   │   │   │   ├── types.ts
+│   │   │   │   ├── useVoiceAgent.ts
+│   │   │   │   └── components.tsx
+│   │   │   ├── VoiceBar.tsx
+│   │   │   ├── FloatingBubble.tsx
+│   │   │   ├── CornerCard.tsx
+│   │   │   ├── Widget.tsx      # Main widget component
+│   │   │   ├── LeadForm.tsx
+│   │   │   └── JoyrideFlowWrapper.tsx
 │   │   ├── pages/
 │   │   │   ├── agents.tsx      # Agent cards grid (main page)
 │   │   │   ├── agent-detail.tsx # Agent detail with tabs
@@ -188,12 +205,10 @@ narada-ai/
 │   ├── routes.ts          # API route handlers
 │   ├── storage.ts         # Database storage interface
 │   ├── websocket.ts       # WebSocket handler for voice AI
+│   ├── googleAuth.ts      # Google OAuth 2.0 implementation
 │   └── index-dev.ts       # Development server entry
-├── widget/                 # Embeddable widget
-│   ├── NaradaWidget.tsx
-│   └── embed.ts           # Script injection logic
 ├── shared/
-│   └── schema.ts          # Shared TypeScript types
+│   └── schema.ts          # Shared TypeScript types & Drizzle schema
 └── design_guidelines.md   # Design system documentation
 ```
 
@@ -246,6 +261,15 @@ The agent detail page (`/agents/:id`) uses a tabbed interface:
 - Touch-friendly targets and spacing
 
 ## Recent Changes
+- 2024-12-05: Major codebase refactoring for reusability and standardization
+  - Created shared widget core infrastructure (types.ts, useVoiceAgent.ts, components.tsx)
+  - Refactored all three widget designs (VoiceBar, FloatingBubble, CornerCard) to use shared components
+  - Created reusable agent-section helpers (ResourceList, CreateDialog, useAgentResource) for CRUD patterns
+  - Added UpdateAgent partial type for proper PATCH updates with Zod validation
+  - Updated storage interface to accept partial updates with proper TypeScript types
+  - Fixed widget design save errors by updating updateAgentSchema
+  - Standardized schema with proper exports (WidgetDesign, EventType types)
+  - Updated README and replit.md with new project structure documentation
 - 2024-12-05: Migrated to Google OAuth + Comprehensive Documentation
   - Replaced Replit Auth with direct Google OAuth 2.0 using openid-client
   - Created googleAuth.ts module with full OIDC implementation

@@ -4,6 +4,15 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const WIDGET_DESIGNS = ["voice-bar", "floating-bubble", "corner-card"] as const;
+export type WidgetDesign = typeof WIDGET_DESIGNS[number];
+
+export const EVENT_TYPES = ["view", "click", "scroll", "custom"] as const;
+export type EventType = typeof EVENT_TYPES[number];
+
+export const VOICE_STYLES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
+export type VoiceStyle = typeof VOICE_STYLES[number];
+
 // Session storage table for Replit Auth
 export const sessions = pgTable(
   "sessions",
@@ -167,6 +176,8 @@ export const insertAgentSchema = createInsertSchema(agents).omit({
   createdAt: true,
 });
 
+export const updateAgentSchema = insertAgentSchema.partial();
+
 export const insertKnowledgeItemSchema = createInsertSchema(knowledgeItems).omit({
   id: true,
   createdAt: true,
@@ -200,6 +211,7 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
 // Types
 export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
+export type UpdateAgent = z.infer<typeof updateAgentSchema>;
 
 export type KnowledgeItem = typeof knowledgeItems.$inferSelect;
 export type InsertKnowledgeItem = z.infer<typeof insertKnowledgeItemSchema>;
