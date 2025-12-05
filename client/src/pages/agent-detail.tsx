@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code, CheckCircle2, XCircle, AlertCircle, Loader2, Globe, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code, CheckCircle2, XCircle, AlertCircle, Loader2, Globe, ExternalLink, Palette } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ import { KnowledgeSection } from "@/components/agent-sections/knowledge-section"
 import { EventTagsSection } from "@/components/agent-sections/event-tags-section";
 import { FlowsSection } from "@/components/agent-sections/flows-section";
 import { AnalyticsSection } from "@/components/agent-sections/analytics-section";
+import { WidgetPreviewSection } from "@/components/agent-sections/widget-preview-section";
 
 const agentFormSchema = insertAgentSchema.extend({
   name: z.string().min(1, "Name is required"),
@@ -372,7 +373,7 @@ export default function AgentDetailPage() {
       </div>
 
       <Tabs defaultValue="settings" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-7 h-auto">
           <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
             <Settings className="w-4 h-4 hidden sm:block" />
             Settings
@@ -392,6 +393,10 @@ export default function AgentDetailPage() {
           <TabsTrigger value="analytics" className="gap-2" data-testid="tab-analytics">
             <BarChart3 className="w-4 h-4 hidden sm:block" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="widget" className="gap-2" data-testid="tab-widget">
+            <Palette className="w-4 h-4 hidden sm:block" />
+            Widget
           </TabsTrigger>
           <TabsTrigger value="embed" className="gap-2" data-testid="tab-embed">
             <Code className="w-4 h-4 hidden sm:block" />
@@ -512,6 +517,10 @@ export default function AgentDetailPage() {
 
         <TabsContent value="analytics">
           <AnalyticsSection agentId={agentId} />
+        </TabsContent>
+
+        <TabsContent value="widget">
+          <WidgetPreviewSection agentId={agentId} agentName={agent?.name} />
         </TabsContent>
 
         <TabsContent value="embed">
