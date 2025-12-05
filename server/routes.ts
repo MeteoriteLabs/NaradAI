@@ -558,10 +558,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return;
     }
 
-    // Create widget container
+    // Create widget container (no positioning - widget components handle their own layout)
     var widgetHost = document.createElement('div');
     widgetHost.id = 'narada-widget-host';
-    widgetHost.style.cssText = 'position: fixed; bottom: 0; right: 0; z-index: 999999;';
     document.body.appendChild(widgetHost);
     
     // Construct WebSocket URL
