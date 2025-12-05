@@ -49,8 +49,14 @@ The widget:
 
 ### Database Schema (PostgreSQL)
 
+**users** - User accounts (via Replit Auth)
+- id, email, firstName, lastName, profileImageUrl, companyName, companyWebsite, role, useCase, onboardingCompleted, createdAt, updatedAt
+
+**sessions** - User sessions for authentication
+- sid, sess, expire
+
 **agents** - AI voice agent configurations
-- id, name, persona, voiceStyle, createdAt
+- id, userId (owner), name, persona, voiceStyle, createdAt
 
 **knowledge_items** - Q&A knowledge base
 - id, agentId, question, answer, createdAt
@@ -191,10 +197,28 @@ narada-ai/
 └── design_guidelines.md   # Design system documentation
 ```
 
+## Authentication
+
+### Auth Flow (Replit Auth with Google/GitHub/Apple support)
+- Unauthenticated users see landing page at `/`
+- Login via `/api/login` (redirects to Replit Auth)
+- First-time users go through onboarding at `/onboarding`
+- Authenticated users with completed onboarding → `/agents`
+- All API routes are protected with `isAuthenticated` middleware
+- User data is scoped by `userId` for multi-tenant isolation
+
+### Auth Endpoints
+- `GET /api/auth/user` - Get current authenticated user
+- `POST /api/auth/onboarding` - Submit onboarding details
+- `GET /api/login` - Initiate Replit Auth login
+- `GET /api/logout` - Logout and clear session
+- `GET /api/auth/callback` - OAuth callback handler
+
 ## UI Architecture
 
 ### Navigation Routes
-- `/` → Redirects to `/agents`
+- `/` → Landing page (unauthenticated) or redirect to `/agents` (authenticated)
+- `/onboarding` → First-time user onboarding wizard
 - `/agents` → Agent cards grid (main agents list)
 - `/agents/:id` → Agent detail page with tabbed sections
 - `/leads` → Leads management page
@@ -215,6 +239,15 @@ The agent detail page (`/agents/:id`) uses a tabbed interface:
 - Touch-friendly targets and spacing
 
 ## Recent Changes
+- 2024-12-05: Full authentication and multi-tenancy
+  - Added Replit Auth integration with Google/GitHub/Apple support
+  - Created beautiful landing page with hero, features, and pricing
+  - Built onboarding wizard to collect company details (name, website, role, use case)
+  - Added users and sessions tables with onboarding fields
+  - All API routes protected with isAuthenticated middleware
+  - Multi-tenant data isolation via userId scoping
+  - Ownership verification on all CRUD operations
+  - Auth-aware routing (landing → onboarding → dashboard)
 - 2024-12-04: Self-hosted embed.js endpoint
   - Added `/embed.js` endpoint that serves the widget JavaScript
   - Widget no longer requires external CDN (cdn.narada.ai)
