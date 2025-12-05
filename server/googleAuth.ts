@@ -140,12 +140,25 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Super admin session setter - called before accessing demo accounts
+  app.post("/api/superadmin/authorize", (req, res) => {
+    const { username, password } = req.body;
+    if (username === "superadmin" && password === "Narada112358") {
+      (req.session as any).isSuperAdmin = true;
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  });
+
   // Demo login - bypasses OAuth for demo purposes (super admin only)
   app.get("/api/demo-login", async (req, res) => {
     try {
-      // Check for super admin authorization header
+      // Check for super admin session AND authorization header
       const authHeader = req.headers["x-superadmin-auth"];
-      if (authHeader !== "narada-superadmin-authorized") {
+      const isSuperAdminSession = (req.session as any).isSuperAdmin === true;
+      
+      if (!isSuperAdminSession && authHeader !== "narada-superadmin-authorized") {
         return res.status(403).json({ error: "Super admin access required" });
       }
 
@@ -200,9 +213,11 @@ export async function setupAuth(app: Express) {
   // NaradaAI login - bypasses OAuth for NaradaAI demo (super admin only)
   app.get("/api/naradaai-login", async (req, res) => {
     try {
-      // Check for super admin authorization header
+      // Check for super admin session AND authorization header
       const authHeader = req.headers["x-superadmin-auth"];
-      if (authHeader !== "narada-superadmin-authorized") {
+      const isSuperAdminSession = (req.session as any).isSuperAdmin === true;
+      
+      if (!isSuperAdminSession && authHeader !== "narada-superadmin-authorized") {
         return res.status(403).json({ error: "Super admin access required" });
       }
 
@@ -243,7 +258,7 @@ export async function setupAuth(app: Express) {
           userId: naradaUserId,
           name: "NaradaAI",
           persona: "I am Narada, your intelligent voice guide for the Narada AI platform. I help website visitors understand how our voice-based guidance system works, explain features like lead capture, guided tours, and AI-powered conversations. I'm friendly, knowledgeable, and ready to demonstrate the power of voice-based website assistance.",
-          voiceStyle: "nova",
+          voiceStyle: "alloy",
           widgetDesign: "floating-bubble",
           widgetColor: "#8b5cf6",
           autoStart: false,

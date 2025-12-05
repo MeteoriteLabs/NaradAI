@@ -56,55 +56,28 @@ export default function LandingPage() {
   useEffect(() => {
     const NARADAAI_AGENT_ID = "naradaai-agent-001";
     
-    if (document.getElementById('narada-widget-host')) {
+    if (document.querySelector('script[data-narada-embed]')) {
       return;
     }
 
     const apiBase = window.location.origin;
     
-    const widgetScript = document.createElement('script');
-    widgetScript.src = `${apiBase}/widget.js`;
-    widgetScript.async = true;
+    const embedScript = document.createElement('script');
+    embedScript.src = `${apiBase}/embed.js`;
+    embedScript.async = true;
+    embedScript.setAttribute('data-agent-id', NARADAAI_AGENT_ID);
+    embedScript.setAttribute('data-api-base', apiBase);
+    embedScript.setAttribute('data-narada-embed', 'true');
     
-    widgetScript.onload = () => {
-      if (typeof (window as any).NaradaWidget === 'undefined') {
-        console.error('[Narada AI] Widget bundle loaded but NaradaWidget not found');
-        return;
-      }
-
-      const widgetHost = document.createElement('div');
-      widgetHost.id = 'narada-widget-host';
-      document.body.appendChild(widgetHost);
-      
-      const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
-      const apiUrl = new URL(apiBase);
-      const websocketUrl = `${wsProtocol}//${apiUrl.host}/ws`;
-      const streamingWebsocketUrl = `${wsProtocol}//${apiUrl.host}/ws-stream`;
-
-      (window as any).NaradaWidget.mount(widgetHost, {
-        agentId: NARADAAI_AGENT_ID,
-        websocketUrl: websocketUrl,
-        streamingWebsocketUrl: streamingWebsocketUrl,
-        apiBase: apiBase,
-        useStreaming: true
-      });
-
-      console.log('[Narada AI] Widget mounted for agent:', NARADAAI_AGENT_ID);
-    };
-    
-    widgetScript.onerror = () => {
-      console.error('[Narada AI] Failed to load widget bundle');
-    };
-    
-    document.head.appendChild(widgetScript);
+    document.body.appendChild(embedScript);
 
     return () => {
       const existingHost = document.getElementById('narada-widget-host');
       if (existingHost) {
         existingHost.remove();
       }
-      if (widgetScript.parentNode) {
-        widgetScript.parentNode.removeChild(widgetScript);
+      if (embedScript.parentNode) {
+        embedScript.parentNode.removeChild(embedScript);
       }
     };
   }, []);

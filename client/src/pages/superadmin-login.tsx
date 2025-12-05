@@ -20,8 +20,17 @@ export function useSuperAdminAuth() {
     setIsLoading(false);
   }, []);
 
-  const login = (username: string, password: string): boolean => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     if (username === SUPER_ADMIN_USERNAME && password === SUPER_ADMIN_PASSWORD) {
+      try {
+        await fetch("/api/superadmin/authorize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+      } catch (e) {
+        console.error("Failed to set server session:", e);
+      }
       localStorage.setItem(STORAGE_KEY, "authenticated");
       setIsAuthenticated(true);
       return true;
@@ -51,20 +60,23 @@ export default function SuperAdminLogin() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const success = login(username, password);
+    try {
+      const success = await login(username, password);
       if (success) {
         setLocation("/superadmin/dashboard");
       } else {
         setError("Invalid username or password");
       }
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 500);
+    }
   };
 
   if (isLoading) {
