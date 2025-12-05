@@ -189,67 +189,105 @@ export function useVoiceAgent({
     setAudioLevel(0);
   };
 
+  const wsRef = useRef<WebSocket | null>(null);
+  
+  useEffect(() => {
+    wsRef.current = ws;
+  }, [ws]);
+
   const sendAudioToServer = (audioBlob: Blob) => {
+    console.log('[Narada] Sending audio to server, size:', audioBlob.size);
     const reader = new FileReader();
     reader.onload = () => {
-      if (ws && isConnected && reader.result) {
+      const currentWs = wsRef.current;
+      if (currentWs && currentWs.readyState === WebSocket.OPEN && reader.result) {
         const base64Audio = (reader.result as string).split(",")[1];
-        ws.send(
+        console.log('[Narada] Sending audio data via WebSocket');
+        currentWs.send(
           JSON.stringify({
             type: "audio",
             audioData: base64Audio,
           })
         );
+      } else {
+        console.error('[Narada] WebSocket not ready, state:', currentWs?.readyState);
       }
+    };
+    reader.onerror = (err) => {
+      console.error('[Narada] FileReader error:', err);
     };
     reader.readAsDataURL(audioBlob);
   };
 
   const toggleRecording = useCallback(async () => {
+    console.log('[Narada] Toggle recording, current state:', isRecording);
+    
     if (isRecording) {
+      console.log('[Narada] Stopping recording...');
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
       }
       setIsRecording(false);
       stopAudioVisualization();
     } else {
+      console.log('[Narada] Starting recording...');
       setIsRecording(true);
       setTranscript(undefined);
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[Narada] Microphone access granted');
         startAudioVisualization(stream);
 
-        const mediaRecorder = new MediaRecorder(stream);
+        // Use webm format which is well supported
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+          ? 'audio/webm' 
+          : 'audio/wav';
+        console.log('[Narada] Using mime type:', mimeType);
+        
+        const mediaRecorder = new MediaRecorder(stream, { mimeType });
         mediaRecorderRef.current = mediaRecorder;
         const audioChunks: BlobPart[] = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
+          console.log('[Narada] Audio chunk received, size:', event.data.size);
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
         };
 
         mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          console.log('[Narada] Recording stopped, chunks:', audioChunks.length);
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          console.log('[Narada] Audio blob created, size:', audioBlob.size);
           sendAudioToServer(audioBlob);
           stream.getTracks().forEach((track) => track.stop());
           stopAudioVisualization();
         };
 
-        mediaRecorder.start();
+        mediaRecorder.onerror = (event) => {
+          console.error('[Narada] MediaRecorder error:', event);
+        };
 
+        // Request data every second to ensure we get chunks
+        mediaRecorder.start(1000);
+        console.log('[Narada] MediaRecorder started');
+
+        // Auto-stop after 10 seconds
         setTimeout(() => {
           if (mediaRecorder.state === "recording") {
+            console.log('[Narada] Auto-stopping after 10 seconds');
             mediaRecorder.stop();
             setIsRecording(false);
           }
         }, 10000);
       } catch (error) {
-        console.error("Error accessing microphone:", error);
+        console.error("[Narada] Error accessing microphone:", error);
         setIsRecording(false);
         stopAudioVisualization();
       }
     }
-  }, [isRecording, ws, isConnected]);
+  }, [isRecording]);
 
   const openWidget = useCallback(() => setIsOpen(true), []);
 
