@@ -18,7 +18,14 @@ import type { User as UserType } from "@shared/schema";
 
 const onboardingSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
-  companyWebsite: z.string().url("Please enter a valid URL").or(z.string().length(0)).optional(),
+  companyWebsite: z.string().optional().transform(val => {
+    if (!val || val.trim() === "") return "";
+    // Auto-prepend https:// if missing protocol
+    if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+      return `https://${val}`;
+    }
+    return val;
+  }),
   role: z.string().min(1, "Please select your role"),
   useCase: z.string().min(1, "Please tell us about your use case"),
 });
