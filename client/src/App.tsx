@@ -18,6 +18,8 @@ import DocsPage from "@/pages/docs";
 import AccountPage from "@/pages/account";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
+import SuperAdminLogin from "@/pages/superadmin-login";
+import SuperAdminDashboard from "@/pages/superadmin-dashboard";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -81,6 +83,8 @@ function PublicRouter() {
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/docs" component={DocsPage} />
+      <Route path="/superadmin" component={SuperAdminLogin} />
+      <Route path="/superadmin/dashboard" component={SuperAdminDashboard} />
       <Route component={LandingPage} />
     </Switch>
   );
@@ -90,8 +94,8 @@ function AppRouter() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location] = useLocation();
 
-  const publicOnlyPaths = ["/privacy", "/terms"];
-  const isPublicOnlyPath = publicOnlyPaths.some(path => location === path);
+  const publicOnlyPaths = ["/privacy", "/terms", "/superadmin", "/superadmin/dashboard"];
+  const isPublicOnlyPath = publicOnlyPaths.some(path => location === path || location.startsWith("/superadmin"));
 
   if (isLoading) {
     return <LoadingScreen />;
