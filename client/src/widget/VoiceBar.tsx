@@ -1,7 +1,141 @@
 import { useState } from "react";
-import { Mic, MicOff, X, Volume2 } from "lucide-react";
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
 import { Waveform } from "./core/components";
+
+const VOICE_BAR_STYLES = {
+  container: {
+    position: "fixed" as const,
+    bottom: "24px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 9999,
+    fontFamily: "Inter, system-ui, sans-serif",
+  },
+  bar: (isActive: boolean) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    padding: "12px 16px",
+    borderRadius: "9999px",
+    backdropFilter: "blur(12px)",
+    background: "linear-gradient(135deg, rgba(17, 17, 27, 0.95) 0%, rgba(30, 30, 50, 0.95) 100%)",
+    border: `1px solid ${isActive ? "rgba(139, 92, 246, 0.5)" : "rgba(255, 255, 255, 0.1)"}`,
+    boxShadow: isActive
+      ? "0 8px 32px rgba(139, 92, 246, 0.3), 0 0 0 1px rgba(139, 92, 246, 0.2)"
+      : "0 8px 32px rgba(0, 0, 0, 0.3)",
+    transition: "all 0.3s ease",
+  }),
+  micButton: (isRecording: boolean) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "48px",
+    height: "48px",
+    borderRadius: "50%",
+    border: "none",
+    cursor: "pointer",
+    background: isRecording ? "#ef4444" : "#8b5cf6",
+    boxShadow: isRecording
+      ? "0 4px 12px rgba(239, 68, 68, 0.3)"
+      : "0 4px 12px rgba(139, 92, 246, 0.3)",
+    transition: "all 0.3s ease",
+  }),
+  content: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    minWidth: "200px",
+  },
+  transcript: {
+    fontSize: "14px",
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center" as const,
+    maxWidth: "200px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+    margin: 0,
+  },
+  statusText: {
+    fontSize: "12px",
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: "4px",
+  },
+  speakingIndicator: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    background: "rgba(139, 92, 246, 0.2)",
+  },
+  closeButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    border: "none",
+    background: "rgba(255, 255, 255, 0.1)",
+    cursor: "pointer",
+    transition: "background 0.2s ease",
+  },
+  audioLevelBar: {
+    position: "absolute" as const,
+    bottom: "-4px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "64px",
+    height: "4px",
+    borderRadius: "9999px",
+    overflow: "hidden",
+    background: "rgba(139, 92, 246, 0.2)",
+  },
+};
+
+function MicIcon({ size = 20, color = "#ffffff" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function MicOffIcon({ size = 20, color = "#ffffff" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+      <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function VolumeIcon({ size = 20, color = "#a78bfa" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  );
+}
+
+function CloseIcon({ size = 16, color = "rgba(255, 255, 255, 0.7)" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
 export function VoiceBar({
   isRecording,
@@ -16,75 +150,73 @@ export function VoiceBar({
   const isActive = isRecording || isPlaying || isSpeaking;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div
-        className="flex items-center gap-4 px-4 py-3 rounded-full shadow-2xl border backdrop-blur-lg transition-all duration-300"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(17, 17, 27, 0.95) 0%, rgba(30, 30, 50, 0.95) 100%)",
-          borderColor: isActive
-            ? "rgba(139, 92, 246, 0.5)"
-            : "rgba(255, 255, 255, 0.1)",
-          boxShadow: isActive
-            ? "0 8px 32px rgba(139, 92, 246, 0.3), 0 0 0 1px rgba(139, 92, 246, 0.2)"
-            : "0 8px 32px rgba(0, 0, 0, 0.3)",
-        }}
-      >
+    <div style={VOICE_BAR_STYLES.container}>
+      <div style={VOICE_BAR_STYLES.bar(isActive)}>
         <button
           onClick={onRecordToggle}
-          className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${
-            isRecording
-              ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30"
-              : "bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-600/30"
-          }`}
+          style={VOICE_BAR_STYLES.micButton(isRecording)}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
           data-testid="button-voice-record"
         >
           {isRecording ? (
-            <MicOff className="w-5 h-5 text-white" />
+            <MicOffIcon size={20} color="#ffffff" />
           ) : (
-            <Mic className="w-5 h-5 text-white" />
+            <MicIcon size={20} color="#ffffff" />
           )}
         </button>
 
-        <div className="flex flex-col items-center min-w-[200px]">
+        <div style={VOICE_BAR_STYLES.content}>
           {transcript ? (
-            <p className="text-sm text-white/90 text-center max-w-[200px] truncate">
-              {transcript}
-            </p>
+            <p style={VOICE_BAR_STYLES.transcript}>{transcript}</p>
           ) : (
             <>
               <Waveform isActive={isActive} barCount={16} height={40} />
-              <p className="text-xs text-white/60 mt-1">
+              <span style={VOICE_BAR_STYLES.statusText}>
                 {isRecording
                   ? "Listening..."
                   : isSpeaking
                     ? "Speaking..."
                     : `Ask ${agentName}`}
-              </p>
+              </span>
             </>
           )}
         </div>
 
         {isSpeaking && (
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-violet-600/20">
-            <Volume2 className="w-5 h-5 text-violet-400 animate-pulse" />
+          <div style={VOICE_BAR_STYLES.speakingIndicator}>
+            <VolumeIcon size={20} />
           </div>
         )}
 
         <button
           onClick={onClose}
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          style={VOICE_BAR_STYLES.closeButton}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+          }}
           data-testid="button-voice-close"
         >
-          <X className="w-4 h-4 text-white/70" />
+          <CloseIcon size={16} />
         </button>
       </div>
 
       {isRecording && (
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full overflow-hidden">
+        <div style={VOICE_BAR_STYLES.audioLevelBar}>
           <div
-            className="h-full bg-gradient-to-r from-violet-500 to-purple-500 animate-pulse"
-            style={{ width: `${Math.max(20, audioLevel)}%` }}
+            style={{
+              height: "100%",
+              background: "linear-gradient(90deg, #8b5cf6, #a855f7)",
+              width: `${Math.max(20, audioLevel)}%`,
+              transition: "width 0.1s ease",
+            }}
           />
         </div>
       )}
@@ -96,50 +228,81 @@ export function VoiceBarTrigger({ onClick, agentName }: WidgetTriggerProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <div style={VOICE_BAR_STYLES.container}>
       <button
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl border backdrop-blur-lg transition-all duration-300 hover:scale-105"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(17, 17, 27, 0.95) 0%, rgba(30, 30, 50, 0.95) 100%)",
-          borderColor: isHovered
-            ? "rgba(139, 92, 246, 0.5)"
-            : "rgba(255, 255, 255, 0.1)",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 20px",
+          borderRadius: "9999px",
+          border: `1px solid ${isHovered ? "rgba(139, 92, 246, 0.5)" : "rgba(255, 255, 255, 0.1)"}`,
+          background: "linear-gradient(135deg, rgba(17, 17, 27, 0.95) 0%, rgba(30, 30, 50, 0.95) 100%)",
+          backdropFilter: "blur(12px)",
           boxShadow: isHovered
             ? "0 8px 32px rgba(139, 92, 246, 0.3)"
             : "0 8px 32px rgba(0, 0, 0, 0.3)",
+          cursor: "pointer",
+          transition: "all 0.3s ease",
+          transform: isHovered ? "scale(1.02)" : "scale(1)",
         }}
         data-testid="button-voice-trigger"
       >
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-violet-600 shadow-lg shadow-violet-600/30">
-          <Mic className="w-5 h-5 text-white" />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#8b5cf6",
+            boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
+          }}
+        >
+          <MicIcon size={20} color="#ffffff" />
         </div>
 
-        <div className="flex items-center gap-[2px] h-6">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "2px",
+            height: "24px",
+          }}
+        >
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="w-[3px] rounded-full bg-violet-400/60"
               style={{
+                width: "3px",
+                borderRadius: "9999px",
+                background: "rgba(139, 92, 246, 0.6)",
                 height: `${12 + Math.sin(i) * 8}px`,
                 animation: isHovered
-                  ? `pulse 0.5s ease-in-out ${i * 0.1}s infinite alternate`
+                  ? `narada-pulse 0.5s ease-in-out ${i * 0.1}s infinite alternate`
                   : "none",
               }}
             />
           ))}
         </div>
 
-        <span className="text-sm font-medium text-white/90">
+        <span
+          style={{
+            fontSize: "14px",
+            fontWeight: 500,
+            color: "rgba(255, 255, 255, 0.9)",
+          }}
+        >
           Talk to {agentName}
         </span>
       </button>
 
       <style>{`
-        @keyframes pulse {
+        @keyframes narada-pulse {
           0% { transform: scaleY(0.6); }
           100% { transform: scaleY(1.4); }
         }
