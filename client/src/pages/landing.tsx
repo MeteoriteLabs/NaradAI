@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
+  const handleLogin = () => {
+    window.location.href = "/api/login";
+  };
+
   const handleDemoLogin = () => {
     window.location.href = "/api/demo-login";
   };
@@ -32,9 +36,15 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it Works</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
           </nav>
-          <Button onClick={handleDemoLogin} data-testid="button-header-login">
-            Get Started
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={handleDemoLogin} data-testid="button-header-demo">
+              <Play className="w-4 h-4 mr-2" />
+              Demo
+            </Button>
+            <Button onClick={handleLogin} data-testid="button-header-login">
+              Get Started
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -57,13 +67,13 @@ export default function LandingPage() {
                 digital journeys using voice AI, contextual highlights, and smart navigation.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                <Button size="lg" onClick={handleDemoLogin} className="gap-2 text-base px-8" data-testid="button-hero-signup">
+                <Button size="lg" onClick={handleLogin} className="gap-2 text-base px-8" data-testid="button-hero-signup">
                   <ArrowRight className="w-4 h-4" />
                   Get Started Free
                 </Button>
-                <Button size="lg" variant="outline" className="gap-2 text-base px-8" data-testid="button-hero-demo">
+                <Button size="lg" variant="outline" onClick={handleDemoLogin} className="gap-2 text-base px-8" data-testid="button-hero-demo">
                   <Play className="w-4 h-4" />
-                  Watch Demo
+                  Try Demo
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground pt-2">
@@ -262,7 +272,7 @@ export default function LandingPage() {
                         <span>Email support</span>
                       </li>
                     </ul>
-                    <Button variant="outline" className="w-full" onClick={handleDemoLogin} data-testid="button-pricing-free">
+                    <Button variant="outline" className="w-full" onClick={handleLogin} data-testid="button-pricing-free">
                       Get Started Free
                     </Button>
                   </div>
@@ -300,7 +310,7 @@ export default function LandingPage() {
                         <span>Priority support</span>
                       </li>
                     </ul>
-                    <Button className="w-full" onClick={handleDemoLogin} data-testid="button-pricing-pro">
+                    <Button className="w-full" onClick={handleLogin} data-testid="button-pricing-pro">
                       Start Free Trial
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
@@ -320,7 +330,7 @@ export default function LandingPage() {
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Join hundreds of businesses using Narada to guide visitors, capture leads, and boost conversions.
               </p>
-              <Button size="lg" onClick={handleDemoLogin} className="gap-2 text-base px-8" data-testid="button-cta-signup">
+              <Button size="lg" onClick={handleLogin} className="gap-2 text-base px-8" data-testid="button-cta-signup">
                 <ArrowRight className="w-4 h-4" />
                 Get Started Free
               </Button>
