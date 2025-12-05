@@ -5,7 +5,9 @@ import { createElement } from "react";
 export interface WidgetMountOptions {
   agentId: string;
   websocketUrl: string;
+  streamingWebsocketUrl?: string;
   apiBase?: string;
+  useStreaming?: boolean;
 }
 
 let widgetRoot: Root | null = null;
@@ -20,7 +22,9 @@ export function mount(container: HTMLElement, options: WidgetMountOptions) {
     createElement(Widget, {
       agentId: options.agentId,
       websocketUrl: options.websocketUrl,
+      streamingWebsocketUrl: options.streamingWebsocketUrl,
       apiBase: options.apiBase,
+      useStreaming: options.useStreaming ?? false,
     })
   );
 }

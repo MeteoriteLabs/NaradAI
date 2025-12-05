@@ -4,12 +4,15 @@ import { CornerCard, CornerCardTrigger } from "./CornerCard";
 import { LeadForm } from "./LeadForm";
 import { JoyrideFlowWrapper } from "./JoyrideFlowWrapper";
 import { useVoiceAgent } from "./core";
+import { useStreamingVoice } from "./core/useStreamingVoice";
 import type { WidgetDesign, WidgetDesignProps, WidgetTriggerProps } from "./core/types";
 
 interface WidgetProps {
   agentId: string;
   websocketUrl: string;
+  streamingWebsocketUrl?: string;
   apiBase?: string;
+  useStreaming?: boolean;
 }
 
 const WIDGET_DESIGNS: Record<
@@ -24,7 +27,29 @@ const WIDGET_DESIGNS: Record<
   "corner-card": { Component: CornerCard, Trigger: CornerCardTrigger },
 };
 
-export function Widget({ agentId, websocketUrl, apiBase }: WidgetProps) {
+export function Widget({ agentId, websocketUrl, streamingWebsocketUrl, apiBase, useStreaming = false }: WidgetProps) {
+  // Use legacy batch mode for backward compatibility
+  const legacyVoice = useVoiceAgent({ agentId, websocketUrl, apiBase });
+  
+  // Use streaming mode when enabled and URL is available
+  const streamingVoice = useStreamingVoice({
+    agentId,
+    wsUrl: streamingWebsocketUrl || websocketUrl,
+    onTranscript: (text, isFinal) => {
+      console.log('[Narada] Transcript:', text, isFinal ? '(final)' : '(partial)');
+    },
+    onAIResponse: (text) => {
+      console.log('[Narada] AI Response:', text);
+    },
+    onError: (error) => {
+      console.error('[Narada] Streaming error:', error);
+    },
+  });
+
+  // Determine which mode to use
+  const shouldUseStreaming = useStreaming && streamingWebsocketUrl;
+  
+  // Unified state from either mode
   const {
     isOpen,
     isRecording,
@@ -43,7 +68,26 @@ export function Widget({ agentId, websocketUrl, apiBase }: WidgetProps) {
     handleFlowComplete,
     handleStepChange,
     submitLead,
-  } = useVoiceAgent({ agentId, websocketUrl, apiBase });
+  } = shouldUseStreaming ? {
+    // Map streaming state to legacy interface
+    isOpen: legacyVoice.isOpen,
+    isRecording: streamingVoice.isStreaming,
+    isPlaying: streamingVoice.isAISpeaking,
+    isSpeaking: streamingVoice.isAISpeaking,
+    audioLevel: streamingVoice.audioLevel,
+    transcript: streamingVoice.partialTranscript || streamingVoice.transcript || undefined,
+    agentData: legacyVoice.agentData,
+    toggleRecording: streamingVoice.toggleStreaming,
+    openWidget: legacyVoice.openWidget,
+    closeWidget: legacyVoice.closeWidget,
+    isLeadFormOpen: legacyVoice.isLeadFormOpen,
+    setIsLeadFormOpen: legacyVoice.setIsLeadFormOpen,
+    joyrideSteps: legacyVoice.joyrideSteps,
+    runJoyride: legacyVoice.runJoyride,
+    handleFlowComplete: legacyVoice.handleFlowComplete,
+    handleStepChange: legacyVoice.handleStepChange,
+    submitLead: legacyVoice.submitLead,
+  } : legacyVoice;
 
   if (!agentData) {
     return null;

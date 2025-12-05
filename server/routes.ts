@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAgentSchema, updateAgentSchema, insertKnowledgeItemSchema, insertEventTagSchema, insertFlowSchema, insertStepSchema, insertLeadSchema } from "@shared/schema";
 import { setupWebSocket } from "./websocket";
+import { setupStreamingWebSocket } from "./websocket-stream";
 import { setupAuth, isAuthenticated } from "./googleAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -563,16 +564,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     widgetHost.id = 'narada-widget-host';
     document.body.appendChild(widgetHost);
     
-    // Construct WebSocket URL
+    // Construct WebSocket URLs
     var wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
     var apiUrl = new URL(apiBase);
     var websocketUrl = wsProtocol + '//' + apiUrl.host + '/ws';
+    var streamingWebsocketUrl = wsProtocol + '//' + apiUrl.host + '/ws-stream';
 
-    // Mount React widget
+    // Mount React widget with streaming enabled
     window.NaradaWidget.mount(widgetHost, {
       agentId: agentId,
       websocketUrl: websocketUrl,
-      apiBase: apiBase
+      streamingWebsocketUrl: streamingWebsocketUrl,
+      apiBase: apiBase,
+      useStreaming: true
     });
 
     console.log('[Narada AI] Widget mounted for agent:', agentId);
@@ -599,7 +603,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   
-  setupWebSocket(httpServer);
+  // Setup WebSocket servers
+  setupWebSocket(httpServer);  // Legacy batch processing on /ws
+  setupStreamingWebSocket(httpServer);  // Live streaming on /ws-stream
 
   return httpServer;
 }
