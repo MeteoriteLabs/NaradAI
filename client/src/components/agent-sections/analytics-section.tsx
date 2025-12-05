@@ -3,7 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MessageSquare, Users, GitBranch, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
+
+function formatDate(dateValue: string | Date | null | undefined): string {
+  if (!dateValue) return "Unknown date";
+  try {
+    const date = typeof dateValue === 'string' ? parseISO(dateValue) : dateValue;
+    if (!isValid(date)) return "Unknown date";
+    return format(date, "MMM d, yyyy 'at' h:mm a");
+  } catch {
+    return "Unknown date";
+  }
+}
 
 interface AnalyticsSectionProps {
   agentId: string;
@@ -95,7 +106,7 @@ export function AnalyticsSection({ agentId }: AnalyticsSectionProps) {
                             {conversation.lead_captured ? "Lead Captured" : "Conversation"}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(conversation.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            {formatDate(conversation.created_at)}
                           </span>
                         </div>
                         {conversation.context?.url && (
