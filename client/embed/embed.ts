@@ -7,7 +7,7 @@
   }
 
   const agentId = currentScript.getAttribute('data-agent-id');
-  const apiBase = currentScript.getAttribute('data-api-base');
+  const apiBaseAttr = currentScript.getAttribute('data-api-base');
   
   if (!agentId) {
     console.error('[Narada AI] Missing data-agent-id attribute');
@@ -15,9 +15,10 @@
   }
 
   const scriptSrc = currentScript.src;
-  const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/'));
+  const baseUrl = apiBaseAttr || scriptSrc.substring(0, scriptSrc.lastIndexOf('/'));
   
   const widgetUrl = `${baseUrl}/widget.js`;
+  const widgetCssUrl = `${baseUrl}/widget.css`;
   
   function initWidget() {
     const widgetHost = document.createElement('div');
@@ -32,25 +33,26 @@
 
     const styleLink = document.createElement('link');
     styleLink.rel = 'stylesheet';
-    styleLink.href = `${baseUrl}/widget.css`;
+    styleLink.href = widgetCssUrl;
+    styleLink.onerror = () => {
+      console.warn('[Narada AI] Widget CSS not found, using inline styles');
+    };
     shadowRoot.appendChild(styleLink);
 
-    let websocketUrl;
-    if (apiBase) {
-      const apiUrl = new URL(apiBase);
-      websocketUrl = `${apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'}//${apiUrl.host}/ws`;
-    } else {
-      websocketUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
-    }
+    const baseUrlParsed = new URL(baseUrl);
+    const websocketUrl = `${baseUrlParsed.protocol === 'https:' ? 'wss:' : 'ws:'}//${baseUrlParsed.host}/ws`;
 
     if ((window as any).NaradaWidget) {
       (window as any).NaradaWidget.mount(widgetContainer, {
         agentId,
         websocketUrl,
+        apiBase: baseUrl,
       });
 
       trackPageView();
       setupEventTracking();
+    } else {
+      console.error('[Narada AI] Widget bundle loaded but NaradaWidget not found');
     }
   }
 
@@ -72,7 +74,7 @@
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const element = entry.target as HTMLElement;
-            const tag = element.getAttribute('data-event-tag');
+            const tag = element.getAttribute('data-narada-tag');
             
             if (tag) {
               console.log('[Narada AI] Element visible:', tag);
@@ -85,13 +87,13 @@
       }
     );
 
-    document.querySelectorAll('[data-event-tag]').forEach((el) => {
+    document.querySelectorAll('[data-narada-tag]').forEach((el) => {
       observer.observe(el);
     });
 
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      const tag = target.getAttribute('data-event-tag');
+      const tag = target.closest('[data-narada-tag]')?.getAttribute('data-narada-tag');
       
       if (tag) {
         console.log('[Narada AI] Element clicked:', tag);
@@ -104,7 +106,7 @@
   script.async = true;
   script.onload = initWidget;
   script.onerror = () => {
-    console.error('[Narada AI] Failed to load widget bundle');
+    console.error('[Narada AI] Failed to load widget bundle from', widgetUrl);
   };
   
   document.head.appendChild(script);
