@@ -22,6 +22,7 @@ import {
   UserPlus,
   Headphones,
   Globe,
+  MessageCircle,
   Star,
   PieChart
 } from "lucide-react";
