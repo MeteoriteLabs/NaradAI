@@ -5,8 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Mail, Phone, Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+function formatDate(dateValue: string | Date | null | undefined): string {
+  if (!dateValue) return "Unknown";
+  try {
+    const date = typeof dateValue === 'string' ? parseISO(dateValue) : dateValue;
+    if (!isValid(date)) return "Unknown";
+    return format(date, "MMM d, yyyy");
+  } catch {
+    return "Unknown";
+  }
+}
 
 export default function LeadsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -125,7 +136,7 @@ export default function LeadsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(lead.created_at), "MMM d, yyyy")}
+                          {formatDate(lead.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -68,9 +68,9 @@ export function AnalyticsSection({ agentId }: AnalyticsSectionProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-bold mt-2" data-testid={`stat-value-${index}`}>
+                    <div className="text-3xl font-bold mt-2" data-testid={`stat-value-${index}`}>
                       {isLoading ? <Skeleton className="h-9 w-20" /> : stat.value}
-                    </p>
+                    </div>
                   </div>
                   <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                     <Icon className={`w-6 h-6 ${stat.color}`} />

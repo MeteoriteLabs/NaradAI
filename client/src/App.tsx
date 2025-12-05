@@ -14,6 +14,7 @@ import AgentsPage from "@/pages/agents";
 import AgentDetailPage from "@/pages/agent-detail";
 import LeadsPage from "@/pages/leads";
 import DocsPage from "@/pages/docs";
+import AccountPage from "@/pages/account";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -27,6 +28,7 @@ function AuthenticatedRouter() {
       <Route path="/agents/:id" component={AgentDetailPage} />
       <Route path="/leads" component={LeadsPage} />
       <Route path="/docs" component={DocsPage} />
+      <Route path="/account" component={AccountPage} />
       <Route component={NotFound} />
     </Switch>
   );

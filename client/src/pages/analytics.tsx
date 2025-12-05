@@ -5,7 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MessageSquare, Users, GitBranch, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
+
+function formatDate(dateValue: string | Date | null | undefined): string {
+  if (!dateValue) return "Unknown";
+  try {
+    const date = typeof dateValue === 'string' ? parseISO(dateValue) : dateValue;
+    if (!isValid(date)) return "Unknown";
+    return format(date, "MMM d, yyyy 'at' h:mm a");
+  } catch {
+    return "Unknown";
+  }
+}
 
 export default function AnalyticsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -93,9 +104,9 @@ export default function AnalyticsPage() {
                         <p className="text-sm font-medium text-muted-foreground">
                           {stat.title}
                         </p>
-                        <p className="text-3xl font-bold mt-2" data-testid={`stat-value-${index}`}>
+                        <div className="text-3xl font-bold mt-2" data-testid={`stat-value-${index}`}>
                           {isLoading ? <Skeleton className="h-9 w-20" /> : stat.value}
-                        </p>
+                        </div>
                       </div>
                       <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                         <Icon className={`w-6 h-6 ${stat.color}`} />
@@ -134,7 +145,7 @@ export default function AnalyticsPage() {
                                 {conversation.lead_captured ? "Lead Captured" : "Conversation"}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
-                                {format(new Date(conversation.created_at), "MMM d, yyyy 'at' h:mm a")}
+                                {formatDate(conversation.created_at)}
                               </span>
                             </div>
                             {conversation.context?.url && (
