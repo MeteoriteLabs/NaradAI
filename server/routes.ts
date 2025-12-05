@@ -88,8 +88,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingAgent.userId && existingAgent.userId !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = insertAgentSchema.parse(req.body);
-      const agent = await storage.updateAgent(req.params.id, { ...data, userId });
+      // Allow partial updates - merge with existing data
+      const updateData: any = {};
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.persona !== undefined) updateData.persona = req.body.persona;
+      if (req.body.voiceStyle !== undefined) updateData.voiceStyle = req.body.voiceStyle;
+      if (req.body.widgetDesign !== undefined) updateData.widgetDesign = req.body.widgetDesign;
+      if (req.body.widgetColor !== undefined) updateData.widgetColor = req.body.widgetColor;
+      
+      const agent = await storage.updateAgent(req.params.id, { ...updateData, userId });
       res.json(agent);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
