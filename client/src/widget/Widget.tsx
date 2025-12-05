@@ -79,7 +79,7 @@ export function Widget({ agentId, websocketUrl }: WidgetProps) {
     switch (data.type) {
       case "message":
         setTranscript(data.content);
-        setTimeout(() => setTranscript(undefined), 3000);
+        setTimeout(() => setTranscript(undefined), 5000);
         break;
       case "start_flow":
         if (data.steps) {
@@ -98,13 +98,18 @@ export function Widget({ agentId, websocketUrl }: WidgetProps) {
         setIsLeadFormOpen(true);
         break;
       case "audio":
-        playAudio(data.audioData);
+        playAudio(data.audioData, data.format || "wav");
         break;
       case "speaking_start":
         setIsSpeaking(true);
+        setIsPlaying(true);
         break;
       case "speaking_end":
         setIsSpeaking(false);
+        setIsPlaying(false);
+        break;
+      case "connected":
+        console.log("Connected to voice agent:", data.agent?.name);
         break;
     }
   };
@@ -205,15 +210,20 @@ export function Widget({ agentId, websocketUrl }: WidgetProps) {
     reader.readAsDataURL(audioBlob);
   };
 
-  const playAudio = (base64Audio: string) => {
+  const playAudio = (base64Audio: string, format: string = "wav") => {
     setIsPlaying(true);
     setIsSpeaking(true);
-    const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+    const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
+    const audio = new Audio(`data:${mimeType};base64,${base64Audio}`);
     audio.onended = () => {
       setIsPlaying(false);
       setIsSpeaking(false);
     };
-    audio.play();
+    audio.play().catch(err => {
+      console.error("Audio playback error:", err);
+      setIsPlaying(false);
+      setIsSpeaking(false);
+    });
   };
 
   const handleLeadSubmit = (data: LeadFormData) => {

@@ -120,12 +120,16 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
 
   const greeting = `Hi! I'm ${agent.name}. How can I help you today?`;
 
+  // Send text message
   ws.send(
     JSON.stringify({
       type: "message",
       content: greeting,
     })
   );
+
+  // Generate and send audio greeting
+  await speakText(ws, greeting, agent.voiceStyle || "alloy");
 
   ws.conversationHistory.push({
     role: "assistant",
@@ -139,6 +143,38 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
       { role: "assistant", text: greeting, timestamp: new Date().toISOString() }
     ],
   });
+}
+
+async function speakText(ws: WebSocketClient, text: string, voice: string = "alloy") {
+  try {
+    // Notify widget that agent is speaking
+    ws.send(JSON.stringify({ type: "speaking_start" }));
+
+    const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+    const selectedVoice = validVoices.includes(voice) ? voice : "alloy";
+
+    const mp3Response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: selectedVoice as any,
+      input: text,
+    });
+
+    const audioBuffer = Buffer.from(await mp3Response.arrayBuffer());
+    const base64Audio = audioBuffer.toString("base64");
+
+    ws.send(
+      JSON.stringify({
+        type: "audio",
+        audioData: base64Audio,
+        format: "mp3",
+      })
+    );
+
+    ws.send(JSON.stringify({ type: "speaking_end" }));
+  } catch (error) {
+    console.error("Text-to-speech error:", error);
+    ws.send(JSON.stringify({ type: "speaking_end" }));
+  }
 }
 
 function buildSystemPrompt(
@@ -288,6 +324,9 @@ async function processOpenAIResponse(
           content: responseMessage.content,
         })
       );
+
+      // Speak the response
+      await speakText(ws, responseMessage.content, agent.voiceStyle || "alloy");
 
       ws.conversationHistory.push({
         role: "assistant",
