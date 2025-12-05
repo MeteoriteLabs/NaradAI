@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
@@ -12,15 +12,17 @@ import {
   MessageSquare, 
   TrendingUp,
   Play,
-  UserPlus,
+  Sparkles,
   Settings,
-  Database
+  Database,
+  Loader2
 } from "lucide-react";
 
 export default function SuperAdminDashboard() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading, logout } = useSuperAdminAuth();
   const { toast } = useToast();
+  const [loginLoading, setLoginLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -33,15 +35,60 @@ export default function SuperAdminDashboard() {
     setLocation("/superadmin");
   };
 
-  const handleDemoAccount = () => {
-    window.location.href = "/api/demo-login";
+  const handleDemoAccountLogin = async () => {
+    setLoginLoading("demo");
+    try {
+      const response = await fetch("/api/demo-login", {
+        method: "GET",
+        headers: {
+          "X-SuperAdmin-Auth": "narada-superadmin-authorized",
+        },
+        redirect: "follow",
+      });
+      
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (response.ok) {
+        window.location.href = "/";
+      } else {
+        throw new Error("Failed to login as Demo user");
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Failed to login as Demo user. Please try again.",
+        variant: "destructive",
+      });
+      setLoginLoading(null);
+    }
   };
 
-  const handleCreateDemoUser = () => {
-    toast({
-      title: "Demo User Created",
-      description: "A new demo user account has been created successfully.",
-    });
+  const handleNaradaAILogin = async () => {
+    setLoginLoading("naradaai");
+    try {
+      const response = await fetch("/api/naradaai-login", {
+        method: "GET",
+        headers: {
+          "X-SuperAdmin-Auth": "narada-superadmin-authorized",
+        },
+        redirect: "follow",
+      });
+      
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (response.ok) {
+        window.location.href = "/";
+      } else {
+        throw new Error("Failed to login as NaradaAI user");
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Failed to login as NaradaAI user. Please try again.",
+        variant: "destructive",
+      });
+      setLoginLoading(null);
+    }
   };
 
   if (isLoading) {
@@ -65,20 +112,22 @@ export default function SuperAdminDashboard() {
 
   const quickActions = [
     { 
-      label: "Try Demo Account", 
-      description: "Login as a demo user to test the platform",
-      icon: Play, 
-      onClick: handleDemoAccount,
-      testId: "button-demo-account",
-      variant: "default" as const
+      label: "Login as NaradaAI", 
+      description: "Access the NaradaAI demo account with the landing page widget",
+      icon: Sparkles, 
+      onClick: handleNaradaAILogin,
+      testId: "button-naradaai-account",
+      variant: "default" as const,
+      loading: loginLoading === "naradaai"
     },
     { 
-      label: "Create Demo User", 
-      description: "Generate a new demo user account",
-      icon: UserPlus, 
-      onClick: handleCreateDemoUser,
-      testId: "button-create-demo-user",
-      variant: "outline" as const
+      label: "Login as Demo User", 
+      description: "Access the generic demo account for testing",
+      icon: Play, 
+      onClick: handleDemoAccountLogin,
+      testId: "button-demo-account",
+      variant: "outline" as const,
+      loading: loginLoading === "demo"
     },
     { 
       label: "System Settings", 
@@ -86,7 +135,8 @@ export default function SuperAdminDashboard() {
       icon: Settings, 
       onClick: () => toast({ title: "Coming Soon", description: "System settings will be available soon." }),
       testId: "button-system-settings",
-      variant: "outline" as const
+      variant: "outline" as const,
+      loading: false
     },
     { 
       label: "Database Management", 
@@ -94,7 +144,8 @@ export default function SuperAdminDashboard() {
       icon: Database, 
       onClick: () => toast({ title: "Coming Soon", description: "Database management will be available soon." }),
       testId: "button-database-management",
-      variant: "outline" as const
+      variant: "outline" as const,
+      loading: false
     },
   ];
 
@@ -146,11 +197,19 @@ export default function SuperAdminDashboard() {
           <h3 className="text-xl font-semibold mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {quickActions.map((action) => (
-              <Card key={action.label} className="hover-elevate cursor-pointer" onClick={action.onClick}>
+              <Card 
+                key={action.label} 
+                className={`hover-elevate cursor-pointer ${action.loading ? 'opacity-75' : ''}`} 
+                onClick={action.loading ? undefined : action.onClick}
+              >
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <action.icon className="w-6 h-6 text-primary" />
+                      {action.loading ? (
+                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                      ) : (
+                        <action.icon className="w-6 h-6 text-primary" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold">{action.label}</h4>
@@ -160,12 +219,20 @@ export default function SuperAdminDashboard() {
                       variant={action.variant} 
                       size="sm"
                       data-testid={action.testId}
+                      disabled={action.loading}
                       onClick={(e) => {
                         e.stopPropagation();
-                        action.onClick();
+                        if (!action.loading) {
+                          action.onClick();
+                        }
                       }}
                     >
-                      {action.label === "Try Demo Account" ? "Launch" : "Open"}
+                      {action.loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : action.label.includes("Login") ? "Launch" : "Open"}
                     </Button>
                   </div>
                 </CardContent>
