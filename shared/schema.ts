@@ -13,6 +13,18 @@ export type EventType = typeof EVENT_TYPES[number];
 export const VOICE_STYLES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
 export type VoiceStyle = typeof VOICE_STYLES[number];
 
+export const VOICE_PROVIDERS = ["openai", "elevenlabs"] as const;
+export type VoiceProvider = typeof VOICE_PROVIDERS[number];
+
+export const ELEVENLABS_VOICES = [
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Soft, warm female voice" },
+  { id: "IKne3meq5aSn9XLyUdCD", name: "Charlie", description: "Natural male voice" },
+  { id: "XB0fDUnXU5powFXDhCwa", name: "Charlotte", description: "Clear female voice" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Warm British female" },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", description: "Articulate American male" },
+  { id: "bIHbv24MWmeRgasZH58o", name: "Will", description: "Friendly young male" },
+] as const;
+
 // Session storage table for Replit Auth
 export const sessions = pgTable(
   "sessions",
@@ -49,8 +61,9 @@ export const agents = pgTable("agents", {
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   persona: text("persona"),
-  voiceStyle: text("voice_style").default("alloy"),
-  elevenlabsVoiceId: text("elevenlabs_voice_id"), // Optional ElevenLabs voice ID for TTS
+  voiceProvider: text("voice_provider").default("openai"), // "openai" | "elevenlabs"
+  voiceStyle: text("voice_style").default("alloy"), // OpenAI voice style
+  elevenLabsVoiceId: text("elevenlabs_voice_id"), // ElevenLabs voice ID
   widgetDesign: text("widget_design").default("voice-bar"), // "voice-bar" | "floating-bubble" | "corner-card"
   widgetColor: text("widget_color").default("#8b5cf6"), // Primary color for widget
   autoStart: boolean("auto_start").default(false), // Start voice bot automatically on page load

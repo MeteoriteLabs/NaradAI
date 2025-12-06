@@ -39,7 +39,6 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Refs for audio components
   const wsRef = useRef<WebSocket | null>(null);
-  const hasConnectedRef = useRef(false); // Track if we've initiated connection
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,17 +54,10 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Connect to WebSocket
   const connect = useCallback(() => {
-    // Prevent multiple connection attempts
-    if (hasConnectedRef.current) {
-      console.log("[Narada Stream] Already connected or connecting, skipping");
-      return;
-    }
-    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
-    hasConnectedRef.current = true;
     console.log("[Narada Stream] Connecting to WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
@@ -83,14 +75,13 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
     ws.onmessage = async (event) => {
       if (event.data instanceof ArrayBuffer) {
-        // Binary audio data - ignore since we now use ElevenLabs MP3 via JSON
-        console.log("[Narada Stream] Ignoring binary audio frame, using ElevenLabs MP3 instead");
-        return;
+        // Binary audio data from TTS
+        await handleAudioChunk(event.data);
       } else {
         // JSON message
         try {
           const msg = JSON.parse(event.data);
-          await handleServerMessage(msg);
+          handleServerMessage(msg);
         } catch (e) {
           console.error("[Narada Stream] Failed to parse message:", e);
         }
@@ -111,7 +102,85 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     wsRef.current = ws;
   }, [wsUrl, agentId, onError]);
 
-  // Play audio queue - must be defined before handlers that use it
+  // Handle server messages
+  const handleServerMessage = useCallback((msg: any) => {
+    console.log("[Narada Stream] Server message:", msg.type);
+    
+    switch (msg.type) {
+      case "transcript.partial":
+        setState(s => ({ ...s, partialTranscript: msg.text }));
+        onTranscript?.(msg.text, false);
+        break;
+        
+      case "transcript.final":
+        setState(s => ({ 
+          ...s, 
+          transcript: msg.text,
+          partialTranscript: "" 
+        }));
+        onTranscript?.(msg.text, true);
+        break;
+        
+      case "response.start":
+        setState(s => ({ ...s, isAISpeaking: true }));
+        break;
+        
+      case "response.text":
+        onAIResponse?.(msg.text);
+        break;
+        
+      case "response.end":
+        setState(s => ({ ...s, isAISpeaking: false }));
+        break;
+        
+      case "error":
+        setState(s => ({ ...s, error: msg.message }));
+        onError?.(msg.message);
+        break;
+    }
+  }, [onTranscript, onAIResponse, onError]);
+
+  // Handle incoming audio chunks for playback
+  const handleAudioChunk = useCallback(async (audioData: ArrayBuffer) => {
+    console.log("[Narada Stream] Received audio chunk:", audioData.byteLength, "bytes");
+    
+    if (!playbackContextRef.current) {
+      playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      console.log("[Narada Stream] Created playback AudioContext");
+      
+      // Create gain node for volume control
+      gainNodeRef.current = playbackContextRef.current.createGain();
+      gainNodeRef.current.connect(playbackContextRef.current.destination);
+      gainNodeRef.current.gain.value = isMutedRef.current ? 0 : 1;
+    }
+
+    // Resume AudioContext if suspended (required after user interaction in some browsers)
+    if (playbackContextRef.current.state === "suspended") {
+      await playbackContextRef.current.resume();
+      console.log("[Narada Stream] Resumed AudioContext");
+    }
+
+    try {
+      // Decode PCM16 to AudioBuffer
+      const int16Array = new Int16Array(audioData);
+      const float32Array = new Float32Array(int16Array.length);
+      
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768;
+      }
+
+      const audioBuffer = playbackContextRef.current.createBuffer(1, float32Array.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Array);
+
+      audioQueueRef.current.push(audioBuffer);
+      console.log("[Narada Stream] Queued audio buffer, queue length:", audioQueueRef.current.length);
+      playNextInQueue();
+    } catch (e) {
+      console.error("[Narada Stream] Audio decode error:", e);
+    }
+  }, []);
+
+  // Play audio queue
   const playNextInQueue = useCallback(() => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) {
       return;
@@ -143,95 +212,6 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     console.log("[Narada Stream] Playing audio buffer, duration:", buffer.duration.toFixed(3), "s");
     source.start();
   }, []);
-
-  // Handle MP3 audio from ElevenLabs - must be defined before handleServerMessage
-  const handleMp3Audio = useCallback(async (base64Audio: string) => {
-    console.log("[Narada Stream] Received MP3 audio from ElevenLabs");
-    
-    if (!playbackContextRef.current) {
-      playbackContextRef.current = new AudioContext();
-      console.log("[Narada Stream] Created playback AudioContext for MP3");
-      
-      gainNodeRef.current = playbackContextRef.current.createGain();
-      gainNodeRef.current.connect(playbackContextRef.current.destination);
-      gainNodeRef.current.gain.value = isMutedRef.current ? 0 : 1;
-    }
-
-    if (playbackContextRef.current.state === "suspended") {
-      await playbackContextRef.current.resume();
-    }
-
-    try {
-      // Decode base64 to ArrayBuffer
-      const binaryString = atob(base64Audio);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      // Decode MP3 to AudioBuffer
-      const audioBuffer = await playbackContextRef.current.decodeAudioData(bytes.buffer);
-      console.log("[Narada Stream] Decoded MP3, duration:", audioBuffer.duration.toFixed(2), "s");
-      
-      audioQueueRef.current.push(audioBuffer);
-      playNextInQueue();
-    } catch (e) {
-      console.error("[Narada Stream] MP3 decode error:", e);
-    }
-  }, [playNextInQueue]);
-
-  // Handle server messages
-  const handleServerMessage = useCallback(async (msg: any) => {
-    console.log("[Narada Stream] Server message:", msg.type);
-    
-    switch (msg.type) {
-      case "transcript.partial":
-        setState(s => ({ ...s, partialTranscript: msg.text }));
-        onTranscript?.(msg.text, false);
-        break;
-        
-      case "transcript.final":
-        setState(s => ({ 
-          ...s, 
-          transcript: msg.text,
-          partialTranscript: "" 
-        }));
-        onTranscript?.(msg.text, true);
-        break;
-        
-      case "response.start":
-        setState(s => ({ ...s, isAISpeaking: true }));
-        break;
-        
-      case "response.text":
-        onAIResponse?.(msg.text);
-        break;
-        
-      case "response.end":
-        setState(s => ({ ...s, isAISpeaking: false }));
-        break;
-        
-      case "speaking_start":
-        setState(s => ({ ...s, isAISpeaking: true }));
-        break;
-        
-      case "speaking_end":
-        setState(s => ({ ...s, isAISpeaking: false }));
-        break;
-        
-      case "audio":
-        // Handle base64 audio from ElevenLabs (MP3 format)
-        if (msg.audioData && msg.format === "mp3") {
-          await handleMp3Audio(msg.audioData);
-        }
-        break;
-        
-      case "error":
-        setState(s => ({ ...s, error: msg.message }));
-        onError?.(msg.message);
-        break;
-    }
-  }, [onTranscript, onAIResponse, onError, handleMp3Audio]);
 
   // Start streaming
   const startStreaming = useCallback(async () => {
@@ -423,7 +403,6 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     
     return () => {
       console.log("[Narada Stream] Hook unmounting, cleaning up...");
-      hasConnectedRef.current = false; // Reset for potential remount
       stopStreaming();
       if (wsRef.current) {
         wsRef.current.close();
@@ -439,9 +418,6 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   // Full cleanup - stops everything and disconnects
   const disconnect = useCallback(() => {
     console.log("[Narada Stream] Disconnecting and cleaning up...");
-    
-    // Reset connection tracking
-    hasConnectedRef.current = false;
     
     // Stop streaming first
     stopStreaming();

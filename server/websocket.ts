@@ -3,7 +3,6 @@ import { Server } from "http";
 import { storage } from "./storage";
 import OpenAI, { toFile } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { synthesizeWithElevenLabs, mapOpenAIVoiceToElevenLabs } from "./elevenlabs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -145,7 +144,7 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
   );
 
   // Generate and send audio greeting
-  await speakText(ws, greeting, agent.voiceStyle || "alloy", agent.elevenlabsVoiceId);
+  await speakText(ws, greeting, agent.voiceStyle || "alloy");
 
   ws.conversationHistory.push({
     role: "assistant",
@@ -161,15 +160,21 @@ async function sendGreeting(ws: WebSocketClient, agent: any) {
   });
 }
 
-async function speakText(ws: WebSocketClient, text: string, voice: string = "alloy", elevenlabsVoiceId?: string | null) {
+async function speakText(ws: WebSocketClient, text: string, voice: string = "alloy") {
   try {
+    // Notify widget that agent is speaking
     ws.send(JSON.stringify({ type: "speaking_start" }));
 
-    // Use ElevenLabs voice ID directly, with Sarah as default
-    const DEFAULT_ELEVENLABS_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
-    const voiceId = elevenlabsVoiceId || DEFAULT_ELEVENLABS_VOICE;
+    const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+    const selectedVoice = validVoices.includes(voice) ? voice : "alloy";
 
-    const audioBuffer = await synthesizeWithElevenLabs(text, { voiceId });
+    const mp3Response = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: selectedVoice as any,
+      input: text,
+    });
+
+    const audioBuffer = Buffer.from(await mp3Response.arrayBuffer());
     const base64Audio = audioBuffer.toString("base64");
 
     ws.send(
@@ -182,11 +187,7 @@ async function speakText(ws: WebSocketClient, text: string, voice: string = "all
 
     ws.send(JSON.stringify({ type: "speaking_end" }));
   } catch (error) {
-    console.error("ElevenLabs TTS error:", error);
-    ws.send(JSON.stringify({ 
-      type: "error",
-      message: "Voice synthesis failed. Please check your ElevenLabs API key."
-    }));
+    console.error("Text-to-speech error:", error);
     ws.send(JSON.stringify({ type: "speaking_end" }));
   }
 }
@@ -340,7 +341,7 @@ async function processOpenAIResponse(
       );
 
       // Speak the response
-      await speakText(ws, responseMessage.content, agent.voiceStyle || "alloy", agent.elevenlabsVoiceId);
+      await speakText(ws, responseMessage.content, agent.voiceStyle || "alloy");
 
       ws.conversationHistory.push({
         role: "assistant",

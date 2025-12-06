@@ -18,21 +18,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 const agentFormSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
   persona: z.string().optional(),
-  elevenlabsVoiceId: z.string().default("EXAVITQu4vr4xnSDxMaL"),
+  voiceStyle: z.string().default("alloy"),
 });
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
-
-const elevenlabsVoiceOptions = [
-  { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (Soft, Friendly)" },
-  { value: "IKne3meq5aSn9XLyUdCD", label: "Charlie (Casual, Conversational)" },
-  { value: "LcfcDJNUP1GQjkzn1xUU", label: "Emily (Calm, Pleasant)" },
-  { value: "cgSgspJ2msm6clMCkdW9", label: "Jessica (Expressive, Warm)" },
-  { value: "nPczCjzI2devNBz1zQrb", label: "Brian (Deep, Trustworthy)" },
-  { value: "9BWtsMINqrJLrRacOk9x", label: "Aria (Expressive, Clear)" },
-  { value: "CwhRBWXzGAHq8TQ4Fs17", label: "Roger (Confident, Professional)" },
-  { value: "29vD33N1CtxCmqQRPOHJ", label: "Drew (Well-Rounded, Informative)" },
-];
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -44,7 +33,7 @@ export default function Dashboard() {
   });
 
   // Fetch selected agent
-  const { data: selectedAgent, isLoading: isLoadingAgent } = useQuery<any>({
+  const { data: selectedAgent, isLoading: isLoadingAgent } = useQuery({
     queryKey: ["/api/agents", selectedAgentId],
     enabled: !!selectedAgentId,
   });
@@ -54,7 +43,7 @@ export default function Dashboard() {
     defaultValues: {
       name: selectedAgent?.name || "",
       persona: selectedAgent?.persona || "",
-      elevenlabsVoiceId: selectedAgent?.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL",
+      voiceStyle: selectedAgent?.voiceStyle || "alloy",
     },
   });
 
@@ -64,7 +53,7 @@ export default function Dashboard() {
       form.reset({
         name: selectedAgent.name,
         persona: selectedAgent.persona || "",
-        elevenlabsVoiceId: selectedAgent.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL",
+        voiceStyle: selectedAgent.voiceStyle || "alloy",
       });
     }
   }, [selectedAgent, form]);
@@ -136,7 +125,7 @@ export default function Dashboard() {
         <Button
           onClick={() => {
             setSelectedAgentId(null);
-            form.reset({ name: "", persona: "", elevenlabsVoiceId: "EXAVITQu4vr4xnSDxMaL" });
+            form.reset({ name: "", persona: "", voiceStyle: "alloy" });
           }}
           data-testid="button-create-agent"
         >
@@ -233,10 +222,10 @@ export default function Dashboard() {
 
                   <FormField
                     control={form.control}
-                    name="elevenlabsVoiceId"
+                    name="voiceStyle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Voice</FormLabel>
+                        <FormLabel>Voice Style</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-voice-style">
@@ -244,11 +233,12 @@ export default function Dashboard() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {elevenlabsVoiceOptions.map((voice) => (
-                              <SelectItem key={voice.value} value={voice.value}>
-                                {voice.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
+                            <SelectItem value="echo">Echo (Male)</SelectItem>
+                            <SelectItem value="fable">Fable (British Male)</SelectItem>
+                            <SelectItem value="onyx">Onyx (Deep Male)</SelectItem>
+                            <SelectItem value="nova">Nova (Female)</SelectItem>
+                            <SelectItem value="shimmer">Shimmer (Soft Female)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>

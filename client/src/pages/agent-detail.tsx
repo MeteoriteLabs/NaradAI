@@ -45,15 +45,13 @@ const agentFormSchema = insertAgentSchema.extend({
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
 
-const elevenlabsVoiceOptions = [
-  { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (Natural, Conversational)" },
-  { value: "IKne3meq5aSn9XLyUdCD", label: "Charlie (Friendly, Casual)" },
-  { value: "LcfcDJNUP1GQjkzn1xUU", label: "Emily (Warm, Professional)" },
-  { value: "cgSgspJ2msm6clMCkdW9", label: "Jessica (Clear, Articulate)" },
-  { value: "nPczCjzI2devNBz1zQrb", label: "Brian (Deep, Authoritative)" },
-  { value: "9BWtsMINqrJLrRacOk9x", label: "Aria (Expressive, Dynamic)" },
-  { value: "CwhRBWXzGAHq8TQ4Fs17", label: "Roger (Calm, Reassuring)" },
-  { value: "29vD33N1CtxCmqQRPOHJ", label: "Drew (Energetic, Upbeat)" },
+const voiceOptions = [
+  { value: "alloy", label: "Alloy" },
+  { value: "echo", label: "Echo" },
+  { value: "fable", label: "Fable" },
+  { value: "onyx", label: "Onyx" },
+  { value: "nova", label: "Nova" },
+  { value: "shimmer", label: "Shimmer" },
 ];
 
 interface VerificationResult {
@@ -283,14 +281,12 @@ export default function AgentDetailPage() {
       name: "",
       persona: "",
       voiceStyle: "alloy",
-      elevenlabsVoiceId: "EXAVITQu4vr4xnSDxMaL",
       autoStart: false,
     },
     values: agent ? {
       name: agent.name,
       persona: agent.persona || "",
       voiceStyle: agent.voiceStyle || "alloy",
-      elevenlabsVoiceId: agent.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL",
       autoStart: agent.autoStart || false,
     } : undefined,
   });
@@ -369,7 +365,7 @@ export default function AgentDetailPage() {
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="default">Active</Badge>
               <span className="text-sm text-muted-foreground">
-                Voice: {elevenlabsVoiceOptions.find(v => v.value === (agent.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL"))?.label || "Sarah"}
+                Voice: {agent.voiceStyle || "alloy"}
               </span>
             </div>
           </div>
@@ -469,21 +465,21 @@ export default function AgentDetailPage() {
 
                   <FormField
                     control={form.control}
-                    name="elevenlabsVoiceId"
+                    name="voiceStyle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Voice</FormLabel>
+                        <FormLabel>Voice Style</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || "EXAVITQu4vr4xnSDxMaL"}
+                          value={field.value || "alloy"}
                         >
                           <FormControl>
-                            <SelectTrigger data-testid="select-elevenlabs-voice">
+                            <SelectTrigger data-testid="select-voice-style">
                               <SelectValue placeholder="Select voice" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {elevenlabsVoiceOptions.map((voice) => (
+                            {voiceOptions.map((voice) => (
                               <SelectItem key={voice.value} value={voice.value}>
                                 {voice.label}
                               </SelectItem>
@@ -491,7 +487,7 @@ export default function AgentDetailPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Choose a natural-sounding voice for your agent
+                          Choose the voice style for your agent
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

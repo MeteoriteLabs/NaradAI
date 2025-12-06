@@ -1,7 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { storage } from "./storage";
-import { synthesizeWithElevenLabs, mapOpenAIVoiceToElevenLabs } from "./elevenlabs";
 
 const OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17";
 
@@ -12,8 +11,6 @@ interface StreamingClient extends WebSocket {
     url?: string;
     userAgent?: string;
   };
-  currentAgent?: any;
-  pendingResponseText?: string;
 }
 
 export function setupStreamingWebSocket(server: Server) {
@@ -166,17 +163,15 @@ async function initSession(clientWs: StreamingClient, message: any) {
     openaiWs.on("open", () => {
       console.log("[Stream] Connected to OpenAI Realtime API");
 
-      // Store agent reference for TTS
-      clientWs.currentAgent = agent;
-      clientWs.pendingResponseText = "";
-
-      // Configure the session - text only output, ElevenLabs will handle TTS
+      // Configure the session
       openaiWs.send(JSON.stringify({
         type: "session.update",
         session: {
-          modalities: ["text"],
+          modalities: ["text", "audio"],
           instructions: systemInstructions,
+          voice: mapVoiceStyle(agent.voiceStyle),
           input_audio_format: "pcm16",
+          output_audio_format: "pcm16",
           input_audio_transcription: {
             model: "whisper-1"
           },
@@ -287,43 +282,18 @@ async function handleOpenAIMessage(
         break;
 
       case "conversation.item.input_audio_transcription.completed":
-        // Send final transcript to client
+        // Send partial/final transcript to client
         if (event.transcript) {
-          console.log("[Stream] Transcription completed:", event.transcript);
           clientWs.send(JSON.stringify({
             type: "transcript.final",
             text: event.transcript,
           }));
-          
-          // With text-only modality, we need to manually trigger a response
-          // after the transcription is complete
-          if (clientWs.openaiWs?.readyState === WebSocket.OPEN) {
-            console.log("[Stream] Triggering response.create");
-            clientWs.openaiWs.send(JSON.stringify({
-              type: "response.create",
-              response: {
-                modalities: ["text"],
-              }
-            }));
-          }
         }
         break;
 
       case "response.audio_transcript.delta":
-        // AI response text delta (for audio mode - not used with text-only)
+        // AI response text delta
         if (event.delta) {
-          clientWs.pendingResponseText = (clientWs.pendingResponseText || "") + event.delta;
-          clientWs.send(JSON.stringify({
-            type: "response.text.delta",
-            text: event.delta,
-          }));
-        }
-        break;
-
-      case "response.text.delta":
-        // AI response text delta (for text-only mode)
-        if (event.delta) {
-          clientWs.pendingResponseText = (clientWs.pendingResponseText || "") + event.delta;
           clientWs.send(JSON.stringify({
             type: "response.text.delta",
             text: event.delta,
@@ -332,23 +302,21 @@ async function handleOpenAIMessage(
         break;
 
       case "response.audio_transcript.done":
-      case "response.text.done":
-        // Full AI response text - synthesize with ElevenLabs
-        const responseText = event.transcript || event.text || clientWs.pendingResponseText;
-        if (responseText) {
+        // Full AI response text
+        if (event.transcript) {
           clientWs.send(JSON.stringify({
             type: "response.text",
-            text: responseText,
+            text: event.transcript,
           }));
-          
-          // Synthesize audio with ElevenLabs
-          await synthesizeAndSendAudio(clientWs, responseText);
         }
-        clientWs.pendingResponseText = "";
         break;
 
       case "response.audio.delta":
-        // Audio chunk from OpenAI - ignore since we use ElevenLabs
+        // Audio chunk from AI - send as binary
+        if (event.delta) {
+          const audioBuffer = Buffer.from(event.delta, "base64");
+          clientWs.send(audioBuffer);
+        }
         break;
 
       case "response.created":
@@ -393,12 +361,8 @@ async function handleOpenAIMessage(
         sendError(clientWs, event.error?.message || "AI service error");
         break;
 
-      case "conversation.item.created":
-        console.log("[Stream] Conversation item created:", event.item?.type);
-        break;
-
       default:
-        // Log other events for debugging (skip rate_limits)
+        // Log other events for debugging
         if (event.type && !event.type.startsWith("rate_limits")) {
           console.log("[Stream] OpenAI event:", event.type);
         }
@@ -545,55 +509,6 @@ function mapVoiceStyle(voiceStyle?: string | null): string {
     shimmer: "shimmer",
   };
   return voiceMap[voiceStyle || "alloy"] || "alloy";
-}
-
-async function synthesizeAndSendAudio(clientWs: StreamingClient, text: string) {
-  try {
-    const agent = clientWs.currentAgent;
-    if (!agent) {
-      console.error("[Stream] No agent found for TTS");
-      return;
-    }
-
-    // Get ElevenLabs voice ID - use Sarah as default if not set
-    const DEFAULT_ELEVENLABS_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
-    const voiceId = agent.elevenlabsVoiceId || DEFAULT_ELEVENLABS_VOICE;
-    
-    console.log("[Stream] Synthesizing with ElevenLabs, voice:", voiceId);
-    
-    // Notify client that audio is starting
-    clientWs.send(JSON.stringify({ type: "speaking_start" }));
-    
-    // Synthesize audio with ElevenLabs
-    const audioBuffer = await synthesizeWithElevenLabs(text, { voiceId });
-    
-    // Send as base64 JSON message (MP3 format)
-    const base64Audio = audioBuffer.toString("base64");
-    console.log("[Stream] Sending audio to client, size:", base64Audio.length, "chars, WS state:", clientWs.readyState);
-    
-    if (clientWs.readyState !== WebSocket.OPEN) {
-      console.error("[Stream] Cannot send audio - WebSocket not open");
-      return;
-    }
-    
-    clientWs.send(JSON.stringify({
-      type: "audio",
-      audioData: base64Audio,
-      format: "mp3",
-    }));
-    
-    // Notify client that audio is done
-    clientWs.send(JSON.stringify({ type: "speaking_end" }));
-    
-    console.log("[Stream] ElevenLabs audio sent successfully");
-  } catch (error) {
-    console.error("[Stream] ElevenLabs TTS error:", error);
-    clientWs.send(JSON.stringify({
-      type: "error",
-      message: "Voice synthesis failed",
-    }));
-    clientWs.send(JSON.stringify({ type: "speaking_end" }));
-  }
 }
 
 function sendError(clientWs: StreamingClient, message: string) {
