@@ -39,6 +39,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Refs for audio components
   const wsRef = useRef<WebSocket | null>(null);
+  const hasConnectedRef = useRef(false); // Track if we've initiated connection
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,10 +55,17 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Connect to WebSocket
   const connect = useCallback(() => {
+    // Prevent multiple connection attempts
+    if (hasConnectedRef.current) {
+      console.log("[Narada Stream] Already connected or connecting, skipping");
+      return;
+    }
+    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
+    hasConnectedRef.current = true;
     console.log("[Narada Stream] Connecting to WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
@@ -415,6 +423,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     
     return () => {
       console.log("[Narada Stream] Hook unmounting, cleaning up...");
+      hasConnectedRef.current = false; // Reset for potential remount
       stopStreaming();
       if (wsRef.current) {
         wsRef.current.close();
@@ -430,6 +439,9 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   // Full cleanup - stops everything and disconnects
   const disconnect = useCallback(() => {
     console.log("[Narada Stream] Disconnecting and cleaning up...");
+    
+    // Reset connection tracking
+    hasConnectedRef.current = false;
     
     // Stop streaming first
     stopStreaming();

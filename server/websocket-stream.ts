@@ -569,6 +569,13 @@ async function synthesizeAndSendAudio(clientWs: StreamingClient, text: string) {
     
     // Send as base64 JSON message (MP3 format)
     const base64Audio = audioBuffer.toString("base64");
+    console.log("[Stream] Sending audio to client, size:", base64Audio.length, "chars, WS state:", clientWs.readyState);
+    
+    if (clientWs.readyState !== WebSocket.OPEN) {
+      console.error("[Stream] Cannot send audio - WebSocket not open");
+      return;
+    }
+    
     clientWs.send(JSON.stringify({
       type: "audio",
       audioData: base64Audio,
