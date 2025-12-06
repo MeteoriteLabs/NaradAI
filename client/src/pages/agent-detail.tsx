@@ -45,17 +45,7 @@ const agentFormSchema = insertAgentSchema.extend({
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
 
-const openaiVoiceOptions = [
-  { value: "alloy", label: "Alloy (Neutral)" },
-  { value: "echo", label: "Echo (Deeper)" },
-  { value: "fable", label: "Fable (British)" },
-  { value: "onyx", label: "Onyx (Deep Male)" },
-  { value: "nova", label: "Nova (Soft Female)" },
-  { value: "shimmer", label: "Shimmer (Warm Female)" },
-];
-
 const elevenlabsVoiceOptions = [
-  { value: "", label: "Auto-map from fallback voice" },
   { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (Natural, Conversational)" },
   { value: "IKne3meq5aSn9XLyUdCD", label: "Charlie (Friendly, Casual)" },
   { value: "LcfcDJNUP1GQjkzn1xUU", label: "Emily (Warm, Professional)" },
@@ -293,14 +283,14 @@ export default function AgentDetailPage() {
       name: "",
       persona: "",
       voiceStyle: "alloy",
-      elevenlabsVoiceId: "",
+      elevenlabsVoiceId: "EXAVITQu4vr4xnSDxMaL",
       autoStart: false,
     },
     values: agent ? {
       name: agent.name,
       persona: agent.persona || "",
       voiceStyle: agent.voiceStyle || "alloy",
-      elevenlabsVoiceId: agent.elevenlabsVoiceId || "",
+      elevenlabsVoiceId: agent.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL",
       autoStart: agent.autoStart || false,
     } : undefined,
   });
@@ -379,7 +369,7 @@ export default function AgentDetailPage() {
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="default">Active</Badge>
               <span className="text-sm text-muted-foreground">
-                Voice: {agent.elevenlabsVoiceId ? elevenlabsVoiceOptions.find(v => v.value === agent.elevenlabsVoiceId)?.label || "ElevenLabs" : "Default"}
+                Voice: {elevenlabsVoiceOptions.find(v => v.value === (agent.elevenlabsVoiceId || "EXAVITQu4vr4xnSDxMaL"))?.label || "Sarah"}
               </span>
             </div>
           </div>
@@ -479,21 +469,21 @@ export default function AgentDetailPage() {
 
                   <FormField
                     control={form.control}
-                    name="voiceStyle"
+                    name="elevenlabsVoiceId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Fallback Voice Style</FormLabel>
+                        <FormLabel>Voice</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || "alloy"}
+                          value={field.value || "EXAVITQu4vr4xnSDxMaL"}
                         >
                           <FormControl>
-                            <SelectTrigger data-testid="select-voice-style">
-                              <SelectValue placeholder="Select fallback voice" />
+                            <SelectTrigger data-testid="select-elevenlabs-voice">
+                              <SelectValue placeholder="Select voice" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {openaiVoiceOptions.map((voice) => (
+                            {elevenlabsVoiceOptions.map((voice) => (
                               <SelectItem key={voice.value} value={voice.value}>
                                 {voice.label}
                               </SelectItem>
@@ -501,38 +491,7 @@ export default function AgentDetailPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Used to auto-map to an ElevenLabs voice if no specific voice is selected
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="elevenlabsVoiceId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ElevenLabs Voice</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-elevenlabs-voice">
-                              <SelectValue placeholder="Select ElevenLabs voice" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {elevenlabsVoiceOptions.map((voice) => (
-                              <SelectItem key={voice.value || "default"} value={voice.value}>
-                                {voice.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Choose an ElevenLabs voice for natural speech synthesis
+                          Choose a natural-sounding voice for your agent
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

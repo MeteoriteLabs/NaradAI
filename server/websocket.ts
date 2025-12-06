@@ -165,7 +165,9 @@ async function speakText(ws: WebSocketClient, text: string, voice: string = "all
   try {
     ws.send(JSON.stringify({ type: "speaking_start" }));
 
-    const voiceId = elevenlabsVoiceId || mapOpenAIVoiceToElevenLabs(voice);
+    // Use ElevenLabs voice ID directly, with Sarah as default
+    const DEFAULT_ELEVENLABS_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
+    const voiceId = elevenlabsVoiceId || DEFAULT_ELEVENLABS_VOICE;
 
     const audioBuffer = await synthesizeWithElevenLabs(text, { voiceId });
     const base64Audio = audioBuffer.toString("base64");

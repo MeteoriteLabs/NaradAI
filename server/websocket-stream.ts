@@ -538,8 +538,9 @@ async function synthesizeAndSendAudio(clientWs: StreamingClient, text: string) {
       return;
     }
 
-    // Get voice ID - prefer ElevenLabs voice ID, fallback to mapped OpenAI voice
-    const voiceId = agent.elevenlabsVoiceId || mapOpenAIVoiceToElevenLabs(agent.voiceStyle);
+    // Get ElevenLabs voice ID - use Sarah as default if not set
+    const DEFAULT_ELEVENLABS_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
+    const voiceId = agent.elevenlabsVoiceId || DEFAULT_ELEVENLABS_VOICE;
     
     console.log("[Stream] Synthesizing with ElevenLabs, voice:", voiceId);
     
