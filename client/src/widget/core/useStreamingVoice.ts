@@ -51,6 +51,16 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const isPlayingRef = useRef(false);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  
+  // Jitter buffer refs for smooth audio playback
+  const playbackCursorRef = useRef<number>(0); // Scheduled end time of last chunk
+  const bufferedDurationRef = useRef<number>(0); // Total buffered audio duration
+  const isBufferingRef = useRef(true); // Whether we're still prebuffering
+  const scheduledSourcesRef = useRef<AudioBufferSourceNode[]>([]); // Track scheduled sources
+  
+  // Jitter buffer configuration
+  const PREBUFFER_THRESHOLD = 0.35; // Wait for 350ms of audio before starting playback
+  const MIN_SCHEDULE_AHEAD = 0.02; // Schedule at least 20ms ahead of current time
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -122,6 +132,20 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
         break;
         
       case "response.start":
+        // Reset jitter buffer state for new AI response
+        scheduledSourcesRef.current.forEach(source => {
+          try {
+            source.stop();
+          } catch (e) {
+            // Ignore errors from already stopped sources
+          }
+        });
+        scheduledSourcesRef.current = [];
+        audioQueueRef.current = [];
+        isBufferingRef.current = true;
+        bufferedDurationRef.current = 0;
+        playbackCursorRef.current = 0;
+        console.log("[Narada Stream] Reset jitter buffer for new response");
         setState(s => ({ ...s, isAISpeaking: true }));
         break;
         
@@ -140,10 +164,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     }
   }, [onTranscript, onAIResponse, onError]);
 
-  // Handle incoming audio chunks for playback
+  // Handle incoming audio chunks for playback with jitter buffering
   const handleAudioChunk = useCallback(async (audioData: ArrayBuffer) => {
-    console.log("[Narada Stream] Received audio chunk:", audioData.byteLength, "bytes");
-    
     if (!playbackContextRef.current) {
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
       console.log("[Narada Stream] Created playback AudioContext");
@@ -152,6 +174,12 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       gainNodeRef.current = playbackContextRef.current.createGain();
       gainNodeRef.current.connect(playbackContextRef.current.destination);
       gainNodeRef.current.gain.value = isMutedRef.current ? 0 : 1;
+      
+      // Reset jitter buffer state for new audio session
+      isBufferingRef.current = true;
+      bufferedDurationRef.current = 0;
+      playbackCursorRef.current = 0;
+      scheduledSourcesRef.current = [];
     }
 
     // Resume AudioContext if suspended (required after user interaction in some browsers)
@@ -172,17 +200,32 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       const audioBuffer = playbackContextRef.current.createBuffer(1, float32Array.length, 24000);
       audioBuffer.getChannelData(0).set(float32Array);
 
+      // Add to queue and track buffered duration
       audioQueueRef.current.push(audioBuffer);
-      console.log("[Narada Stream] Queued audio buffer, queue length:", audioQueueRef.current.length);
-      playNextInQueue();
+      bufferedDurationRef.current += audioBuffer.duration;
+      
+      // If still prebuffering, check if we have enough audio to start
+      if (isBufferingRef.current) {
+        console.log("[Narada Stream] Buffering: %.3fs / %.3fs", bufferedDurationRef.current, PREBUFFER_THRESHOLD);
+        if (bufferedDurationRef.current >= PREBUFFER_THRESHOLD) {
+          console.log("[Narada Stream] Prebuffer complete, starting scheduled playback");
+          isBufferingRef.current = false;
+          // Initialize cursor slightly ahead of current time
+          playbackCursorRef.current = playbackContextRef.current.currentTime + MIN_SCHEDULE_AHEAD;
+          scheduleAllBufferedAudio();
+        }
+      } else {
+        // Already playing - schedule this new chunk immediately
+        scheduleNextChunk();
+      }
     } catch (e) {
       console.error("[Narada Stream] Audio decode error:", e);
     }
   }, []);
 
-  // Play audio queue
-  const playNextInQueue = useCallback(() => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
+  // Schedule a single audio chunk at the playback cursor position
+  const scheduleNextChunk = useCallback(() => {
+    if (audioQueueRef.current.length === 0) {
       return;
     }
 
@@ -191,27 +234,54 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       return;
     }
 
-    isPlayingRef.current = true;
     const buffer = audioQueueRef.current.shift()!;
     const source = playbackContextRef.current.createBufferSource();
     source.buffer = buffer;
-    
-    // Connect to gain node for volume control
     source.connect(gainNodeRef.current);
-    currentSourceRef.current = source;
     
+    // Calculate when to start this chunk
+    // Use the cursor, but if we've fallen behind, jump to current time + small offset
+    const currentTime = playbackContextRef.current.currentTime;
+    const scheduledStart = Math.max(playbackCursorRef.current, currentTime + MIN_SCHEDULE_AHEAD);
+    
+    // Update cursor for next chunk
+    playbackCursorRef.current = scheduledStart + buffer.duration;
+    
+    // Track this source for cleanup
+    scheduledSourcesRef.current.push(source);
+    
+    // Clean up ended sources from tracking array
     source.onended = () => {
-      isPlayingRef.current = false;
-      currentSourceRef.current = null;
-      if (audioQueueRef.current.length > 0) {
-        console.log("[Narada Stream] Playing next chunk from queue");
+      const idx = scheduledSourcesRef.current.indexOf(source);
+      if (idx > -1) {
+        scheduledSourcesRef.current.splice(idx, 1);
       }
-      playNextInQueue();
+      // Update playing state when all scheduled audio is done
+      if (scheduledSourcesRef.current.length === 0 && audioQueueRef.current.length === 0) {
+        isPlayingRef.current = false;
+      }
     };
     
-    console.log("[Narada Stream] Playing audio buffer, duration:", buffer.duration.toFixed(3), "s");
-    source.start();
+    // Schedule the audio to play at the calculated time
+    source.start(scheduledStart);
+    isPlayingRef.current = true;
+    
+    console.log("[Narada Stream] Scheduled chunk at %.3fs, duration: %.3fs, queue: %d", 
+      scheduledStart, buffer.duration, audioQueueRef.current.length);
   }, []);
+
+  // Schedule all currently buffered audio chunks
+  const scheduleAllBufferedAudio = useCallback(() => {
+    console.log("[Narada Stream] Scheduling %d buffered chunks", audioQueueRef.current.length);
+    while (audioQueueRef.current.length > 0) {
+      scheduleNextChunk();
+    }
+  }, [scheduleNextChunk]);
+
+  // Legacy function kept for compatibility
+  const playNextInQueue = useCallback(() => {
+    scheduleNextChunk();
+  }, [scheduleNextChunk]);
 
   // Start streaming
   const startStreaming = useCallback(async () => {
@@ -322,9 +392,22 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const interruptAI = useCallback(() => {
     console.log("[Narada Stream] Interrupting AI...");
     
-    // Clear audio queue
+    // Stop all scheduled audio sources
+    scheduledSourcesRef.current.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Ignore errors from already stopped sources
+      }
+    });
+    scheduledSourcesRef.current = [];
+    
+    // Clear audio queue and reset jitter buffer state
     audioQueueRef.current = [];
     isPlayingRef.current = false;
+    isBufferingRef.current = true;
+    bufferedDurationRef.current = 0;
+    playbackCursorRef.current = 0;
 
     // Notify server to cancel
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -422,7 +505,17 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     // Stop streaming first
     stopStreaming();
     
-    // Stop any playing audio
+    // Stop all scheduled audio sources
+    scheduledSourcesRef.current.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Ignore errors from already stopped sources
+      }
+    });
+    scheduledSourcesRef.current = [];
+    
+    // Stop any playing audio (legacy)
     if (currentSourceRef.current) {
       try {
         currentSourceRef.current.stop();
@@ -432,9 +525,12 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       currentSourceRef.current = null;
     }
     
-    // Clear audio queue
+    // Clear audio queue and reset jitter buffer state
     audioQueueRef.current = [];
     isPlayingRef.current = false;
+    isBufferingRef.current = true;
+    bufferedDurationRef.current = 0;
+    playbackCursorRef.current = 0;
     
     // Close playback context
     if (playbackContextRef.current) {
