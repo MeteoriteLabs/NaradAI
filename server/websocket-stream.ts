@@ -1,12 +1,15 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { storage } from "./storage";
+import { synthesizeWithElevenLabs } from "./elevenlabs";
 
 const OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17";
 
 interface StreamingClient extends WebSocket {
   agentId?: string;
   openaiWs?: WebSocket;
+  voiceProvider?: "openai" | "elevenlabs";
+  elevenLabsVoiceId?: string;
   context?: {
     url?: string;
     userAgent?: string;
@@ -136,6 +139,12 @@ async function initSession(clientWs: StreamingClient, message: any) {
     return;
   }
 
+  // Store voice provider settings on client for later use
+  clientWs.voiceProvider = (agent.voiceProvider as "openai" | "elevenlabs") || "openai";
+  clientWs.elevenLabsVoiceId = agent.elevenLabsVoiceId || undefined;
+
+  console.log("[Stream] Voice provider:", clientWs.voiceProvider, "ElevenLabs voice:", clientWs.elevenLabsVoiceId);
+
   // Get knowledge base for context
   const knowledge = await storage.getKnowledgeItems(agentId);
   const flows = await storage.getFlows(agentId);
@@ -148,6 +157,12 @@ async function initSession(clientWs: StreamingClient, message: any) {
   if (!apiKey) {
     sendError(clientWs, "OpenAI API key not configured");
     return;
+  }
+
+  // Check ElevenLabs API key if using ElevenLabs
+  if (clientWs.voiceProvider === "elevenlabs" && !process.env.ELEVENLABS_API_KEY) {
+    console.warn("[Stream] ElevenLabs API key not configured, falling back to OpenAI");
+    clientWs.voiceProvider = "openai";
   }
 
   try {
@@ -163,51 +178,61 @@ async function initSession(clientWs: StreamingClient, message: any) {
     openaiWs.on("open", () => {
       console.log("[Stream] Connected to OpenAI Realtime API");
 
-      // Configure the session
+      // Configure session based on voice provider
+      // For ElevenLabs: use text-only output, we'll synthesize audio separately
+      // For OpenAI: use both text and audio output
+      const useElevenLabs = clientWs.voiceProvider === "elevenlabs";
+      
+      const sessionConfig: any = {
+        modalities: useElevenLabs ? ["text"] : ["text", "audio"],
+        instructions: systemInstructions,
+        input_audio_format: "pcm16",
+        input_audio_transcription: {
+          model: "whisper-1"
+        },
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500,
+        },
+        tools: [
+          {
+            type: "function",
+            name: "start_flow",
+            description: "Start a guided product tour or walkthrough flow",
+            parameters: {
+              type: "object",
+              properties: {
+                flow_name: {
+                  type: "string",
+                  description: "Name of the flow to start",
+                },
+              },
+              required: ["flow_name"],
+            },
+          },
+          {
+            type: "function",
+            name: "capture_lead",
+            description: "Capture user contact information",
+            parameters: {
+              type: "object",
+              properties: {},
+            },
+          },
+        ],
+      };
+
+      // Only set voice and output audio format for OpenAI voice provider
+      if (!useElevenLabs) {
+        sessionConfig.voice = mapVoiceStyle(agent.voiceStyle);
+        sessionConfig.output_audio_format = "pcm16";
+      }
+
       openaiWs.send(JSON.stringify({
         type: "session.update",
-        session: {
-          modalities: ["text", "audio"],
-          instructions: systemInstructions,
-          voice: mapVoiceStyle(agent.voiceStyle),
-          input_audio_format: "pcm16",
-          output_audio_format: "pcm16",
-          input_audio_transcription: {
-            model: "whisper-1"
-          },
-          turn_detection: {
-            type: "server_vad",
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 500,
-          },
-          tools: [
-            {
-              type: "function",
-              name: "start_flow",
-              description: "Start a guided product tour or walkthrough flow",
-              parameters: {
-                type: "object",
-                properties: {
-                  flow_name: {
-                    type: "string",
-                    description: "Name of the flow to start",
-                  },
-                },
-                required: ["flow_name"],
-              },
-            },
-            {
-              type: "function",
-              name: "capture_lead",
-              description: "Capture user contact information",
-              parameters: {
-                type: "object",
-                properties: {},
-              },
-            },
-          ],
-        },
+        session: sessionConfig,
       }));
 
       // Notify client that session is ready
@@ -261,6 +286,7 @@ async function handleOpenAIMessage(
 ) {
   try {
     const event = JSON.parse(data);
+    const useElevenLabs = clientWs.voiceProvider === "elevenlabs";
     
     switch (event.type) {
       case "session.created":
@@ -292,7 +318,17 @@ async function handleOpenAIMessage(
         break;
 
       case "response.audio_transcript.delta":
-        // AI response text delta
+        // AI response text delta (OpenAI audio mode)
+        if (event.delta) {
+          clientWs.send(JSON.stringify({
+            type: "response.text.delta",
+            text: event.delta,
+          }));
+        }
+        break;
+
+      case "response.text.delta":
+        // AI response text delta (text-only mode for ElevenLabs)
         if (event.delta) {
           clientWs.send(JSON.stringify({
             type: "response.text.delta",
@@ -302,7 +338,7 @@ async function handleOpenAIMessage(
         break;
 
       case "response.audio_transcript.done":
-        // Full AI response text
+        // Full AI response text (OpenAI audio mode)
         if (event.transcript) {
           clientWs.send(JSON.stringify({
             type: "response.text",
@@ -311,9 +347,37 @@ async function handleOpenAIMessage(
         }
         break;
 
+      case "response.text.done":
+        // Full AI response text (text-only mode for ElevenLabs)
+        if (event.text && useElevenLabs) {
+          clientWs.send(JSON.stringify({
+            type: "response.text",
+            text: event.text,
+          }));
+          
+          // Synthesize audio with ElevenLabs
+          try {
+            const voiceId = clientWs.elevenLabsVoiceId || "EXAVITQu4vr4xnSDxMaL";
+            console.log("[Stream] Synthesizing with ElevenLabs voice:", voiceId);
+            
+            const audioBuffer = await synthesizeWithElevenLabs(event.text, {
+              voiceId,
+            });
+            
+            // Send audio to client as binary
+            if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(audioBuffer);
+            }
+          } catch (error) {
+            console.error("[Stream] ElevenLabs synthesis error:", error);
+            sendError(clientWs, "Voice synthesis failed");
+          }
+        }
+        break;
+
       case "response.audio.delta":
-        // Audio chunk from AI - send as binary
-        if (event.delta) {
+        // Audio chunk from AI - send as binary (only for OpenAI voice)
+        if (event.delta && !useElevenLabs) {
           const audioBuffer = Buffer.from(event.delta, "base64");
           clientWs.send(audioBuffer);
         }
@@ -332,10 +396,12 @@ async function handleOpenAIMessage(
           for (const output of event.response.output) {
             if (output.type === "message" && output.content) {
               for (const content of output.content) {
-                if (content.transcript) {
+                // Handle both audio transcript and text content
+                const text = content.transcript || content.text;
+                if (text) {
                   transcripts.push({
                     role: output.role,
-                    text: content.transcript,
+                    text: text,
                     timestamp: new Date().toISOString(),
                   });
                 }

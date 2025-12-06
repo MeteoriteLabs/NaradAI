@@ -29,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAgentSchema, type Agent } from "@shared/schema";
+import { insertAgentSchema, type Agent, ELEVENLABS_VOICES } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import { KnowledgeSection } from "@/components/agent-sections/knowledge-section";
@@ -45,7 +45,7 @@ const agentFormSchema = insertAgentSchema.extend({
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
 
-const voiceOptions = [
+const openaiVoiceOptions = [
   { value: "alloy", label: "Alloy" },
   { value: "echo", label: "Echo" },
   { value: "fable", label: "Fable" },
@@ -53,6 +53,11 @@ const voiceOptions = [
   { value: "nova", label: "Nova" },
   { value: "shimmer", label: "Shimmer" },
 ];
+
+const elevenLabsVoiceOptions = ELEVENLABS_VOICES.map((v) => ({
+  value: v.id,
+  label: `${v.name} - ${v.description}`,
+}));
 
 interface VerificationResult {
   verified: boolean;
@@ -280,16 +285,22 @@ export default function AgentDetailPage() {
     defaultValues: {
       name: "",
       persona: "",
+      voiceProvider: "openai",
       voiceStyle: "alloy",
+      elevenLabsVoiceId: "",
       autoStart: false,
     },
     values: agent ? {
       name: agent.name,
       persona: agent.persona || "",
+      voiceProvider: agent.voiceProvider || "openai",
       voiceStyle: agent.voiceStyle || "alloy",
+      elevenLabsVoiceId: agent.elevenLabsVoiceId || "",
       autoStart: agent.autoStart || false,
     } : undefined,
   });
+
+  const watchVoiceProvider = form.watch("voiceProvider");
 
   const updateAgentMutation = useMutation({
     mutationFn: (data: AgentFormValues) =>
@@ -465,34 +476,106 @@ export default function AgentDetailPage() {
 
                   <FormField
                     control={form.control}
-                    name="voiceStyle"
+                    name="voiceProvider"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Voice Style</FormLabel>
+                        <FormLabel>Voice Provider</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value || "alloy"}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            if (value === "openai") {
+                              form.setValue("voiceStyle", "alloy");
+                              form.setValue("elevenLabsVoiceId", "");
+                            } else {
+                              form.setValue("voiceStyle", "");
+                              form.setValue("elevenLabsVoiceId", elevenLabsVoiceOptions[0]?.value || "");
+                            }
+                          }}
+                          value={field.value || "openai"}
                         >
                           <FormControl>
-                            <SelectTrigger data-testid="select-voice-style">
-                              <SelectValue placeholder="Select voice" />
+                            <SelectTrigger data-testid="select-voice-provider">
+                              <SelectValue placeholder="Select provider" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {voiceOptions.map((voice) => (
-                              <SelectItem key={voice.value} value={voice.value}>
-                                {voice.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="openai">OpenAI Realtime</SelectItem>
+                            <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Choose the voice style for your agent
+                          Choose the voice synthesis provider
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {watchVoiceProvider === "openai" && (
+                    <FormField
+                      control={form.control}
+                      name="voiceStyle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Voice Style</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || "alloy"}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-voice-style">
+                                <SelectValue placeholder="Select voice" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {openaiVoiceOptions.map((voice) => (
+                                <SelectItem key={voice.value} value={voice.value}>
+                                  {voice.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose the OpenAI voice style
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {watchVoiceProvider === "elevenlabs" && (
+                    <FormField
+                      control={form.control}
+                      name="elevenLabsVoiceId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ElevenLabs Voice</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || elevenLabsVoiceOptions[0]?.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-elevenlabs-voice">
+                                <SelectValue placeholder="Select voice" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {elevenLabsVoiceOptions.map((voice) => (
+                                <SelectItem key={voice.value} value={voice.value}>
+                                  {voice.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose an ElevenLabs voice
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <FormField
                     control={form.control}
