@@ -50,13 +50,15 @@ const agentFormSchema = insertAgentSchema.extend({
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
 
-const voiceOptions = [
-  { value: "alloy", label: "Alloy" },
-  { value: "echo", label: "Echo" },
-  { value: "fable", label: "Fable" },
-  { value: "onyx", label: "Onyx" },
-  { value: "nova", label: "Nova" },
-  { value: "shimmer", label: "Shimmer" },
+const elevenlabsVoiceOptions = [
+  { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (Soft, Friendly)" },
+  { value: "IKne3meq5aSn9XLyUdCD", label: "Charlie (Casual, Conversational)" },
+  { value: "LcfcDJNUP1GQjkzn1xUU", label: "Emily (Calm, Pleasant)" },
+  { value: "cgSgspJ2msm6clMCkdW9", label: "Jessica (Expressive, Warm)" },
+  { value: "nPczCjzI2devNBz1zQrb", label: "Brian (Deep, Trustworthy)" },
+  { value: "9BWtsMINqrJLrRacOk9x", label: "Aria (Expressive, Clear)" },
+  { value: "CwhRBWXzGAHq8TQ4Fs17", label: "Roger (Confident, Professional)" },
+  { value: "29vD33N1CtxCmqQRPOHJ", label: "Drew (Well-Rounded, Informative)" },
 ];
 
 export default function AgentsPage() {
@@ -69,7 +71,7 @@ export default function AgentsPage() {
     defaultValues: {
       name: "",
       persona: "",
-      voiceStyle: "alloy",
+      elevenlabsVoiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah as default
     },
   });
 
@@ -79,7 +81,7 @@ export default function AgentsPage() {
 
   const createAgentMutation = useMutation({
     mutationFn: (data: AgentFormValues) =>
-      apiRequest<Agent>("POST", "/api/agents", data),
+      apiRequest("POST", "/api/agents", data) as Promise<Agent>,
     onSuccess: (newAgent) => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
       setIsCreateDialogOpen(false);
@@ -187,21 +189,21 @@ export default function AgentsPage() {
 
                 <FormField
                   control={form.control}
-                  name="voiceStyle"
+                  name="elevenlabsVoiceId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Voice Style</FormLabel>
+                      <FormLabel>Voice</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        value={field.value || "alloy"}
+                        value={field.value || "EXAVITQu4vr4xnSDxMaL"}
                       >
                         <FormControl>
-                          <SelectTrigger data-testid="select-voice-style">
+                          <SelectTrigger data-testid="select-voice">
                             <SelectValue placeholder="Select voice" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {voiceOptions.map((voice) => (
+                          {elevenlabsVoiceOptions.map((voice) => (
                             <SelectItem key={voice.value} value={voice.value}>
                               {voice.label}
                             </SelectItem>

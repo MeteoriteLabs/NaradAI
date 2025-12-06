@@ -380,8 +380,12 @@ async function handleOpenAIMessage(
         sendError(clientWs, event.error?.message || "AI service error");
         break;
 
+      case "conversation.item.created":
+        console.log("[Stream] Conversation item created:", event.item?.type);
+        break;
+
       default:
-        // Log other events for debugging
+        // Log other events for debugging (skip rate_limits)
         if (event.type && !event.type.startsWith("rate_limits")) {
           console.log("[Stream] OpenAI event:", event.type);
         }
