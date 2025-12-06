@@ -287,12 +287,25 @@ async function handleOpenAIMessage(
         break;
 
       case "conversation.item.input_audio_transcription.completed":
-        // Send partial/final transcript to client
+        // Send final transcript to client
         if (event.transcript) {
+          console.log("[Stream] Transcription completed:", event.transcript);
           clientWs.send(JSON.stringify({
             type: "transcript.final",
             text: event.transcript,
           }));
+          
+          // With text-only modality, we need to manually trigger a response
+          // after the transcription is complete
+          if (clientWs.openaiWs?.readyState === WebSocket.OPEN) {
+            console.log("[Stream] Triggering response.create");
+            clientWs.openaiWs.send(JSON.stringify({
+              type: "response.create",
+              response: {
+                modalities: ["text"],
+              }
+            }));
+          }
         }
         break;
 
