@@ -31,9 +31,9 @@ export interface WidgetDesignProps {
   isRecording: boolean;
   isPlaying: boolean;
   isSpeaking: boolean;
-  isMuted: boolean;
+  isMuted?: boolean;
   onRecordToggle: () => void;
-  onMuteToggle: () => void;
+  onMuteToggle?: () => void;
   onClose: () => void;
   agentName: string;
   audioLevel: number;

@@ -309,6 +309,190 @@ export function Waveform({
   );
 }
 
+// Waveform Mic Button - Shows animated waveform inside the mic button
+// Different colors: User speaking = green/teal, AI speaking = purple/violet
+interface WaveformMicButtonProps {
+  isUserSpeaking: boolean;
+  isAISpeaking: boolean;
+  audioLevel?: number;
+  onClick: () => void;
+  onClose: () => void;
+  size?: "sm" | "md" | "lg" | "xl";
+  primaryColor?: string;
+}
+
+export function WaveformMicButton({
+  isUserSpeaking,
+  isAISpeaking,
+  audioLevel = 0,
+  onClick,
+  onClose,
+  size = "lg",
+  primaryColor = DEFAULT_PRIMARY_COLOR,
+}: WaveformMicButtonProps) {
+  const [waveformBars, setWaveformBars] = useState<number[]>(Array(5).fill(0.2));
+  
+  const sizes = {
+    sm: { button: 48, barWidth: 3, barGap: 2, barMaxHeight: 16 },
+    md: { button: 56, barWidth: 3, barGap: 2, barMaxHeight: 20 },
+    lg: { button: 72, barWidth: 4, barGap: 3, barMaxHeight: 28 },
+    xl: { button: 88, barWidth: 5, barGap: 3, barMaxHeight: 36 },
+  };
+
+  const { button: buttonSize, barWidth, barGap, barMaxHeight } = sizes[size];
+  
+  const isActive = isUserSpeaking || isAISpeaking;
+  
+  // Waveform colors based on who is speaking
+  // User speaking: green/teal tones
+  // AI speaking: purple/violet tones
+  const getBarColor = (index: number, barHeight: number) => {
+    if (isUserSpeaking) {
+      // Teal/green gradient for user
+      return `hsl(${160 + index * 5}, 70%, ${45 + barHeight * 15}%)`;
+    } else if (isAISpeaking) {
+      // Purple/violet gradient for AI
+      return `hsl(${260 + index * 5}, 75%, ${50 + barHeight * 15}%)`;
+    }
+    // Inactive: muted gray
+    return "rgba(255, 255, 255, 0.4)";
+  };
+
+  // Animate waveform based on audio level or random for AI
+  useEffect(() => {
+    if (!isActive) {
+      setWaveformBars(Array(5).fill(0.15));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (isUserSpeaking) {
+        // Use audio level with some variation
+        const baseLevel = Math.max(0.15, audioLevel);
+        setWaveformBars(prev => prev.map(() => 
+          baseLevel * 0.5 + Math.random() * baseLevel * 0.8
+        ));
+      } else if (isAISpeaking) {
+        // Smooth wave animation for AI speaking
+        setWaveformBars(prev => prev.map(() => 
+          0.3 + Math.random() * 0.7
+        ));
+      }
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [isActive, isUserSpeaking, isAISpeaking, audioLevel]);
+
+  // Background gradient based on state
+  const getBackgroundGradient = () => {
+    if (isUserSpeaking) {
+      return "linear-gradient(135deg, #14b8a6, #0d9488)"; // Teal for user
+    } else if (isAISpeaking) {
+      return `linear-gradient(135deg, ${primaryColor}, ${DEFAULT_SECONDARY_COLOR})`; // Purple for AI
+    }
+    return `linear-gradient(135deg, ${primaryColor}, ${DEFAULT_SECONDARY_COLOR})`; // Default purple
+  };
+
+  // Glow effect based on state
+  const getBoxShadow = () => {
+    if (isUserSpeaking) {
+      return "0 8px 32px rgba(20, 184, 166, 0.5), 0 0 0 4px rgba(20, 184, 166, 0.2)";
+    } else if (isAISpeaking) {
+      return "0 8px 32px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(139, 92, 246, 0.2)";
+    }
+    return `0 8px 24px ${primaryColor}66`;
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+      }}
+    >
+      <button
+        onClick={onClick}
+        style={{
+          width: `${buttonSize}px`,
+          height: `${buttonSize}px`,
+          borderRadius: "50%",
+          border: "none",
+          background: getBackgroundGradient(),
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: getBoxShadow(),
+          transition: "transform 0.2s, box-shadow 0.3s, background 0.3s",
+          position: "relative",
+          overflow: "hidden",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+        data-testid="button-waveform-mic"
+      >
+        {/* Waveform bars inside the button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: `${barGap}px`,
+            height: `${barMaxHeight}px`,
+          }}
+        >
+          {waveformBars.map((barHeight, i) => (
+            <div
+              key={i}
+              style={{
+                width: `${barWidth}px`,
+                borderRadius: "9999px",
+                transition: "all 0.08s ease-out",
+                height: `${Math.max(4, barHeight * barMaxHeight)}px`,
+                backgroundColor: getBarColor(i, barHeight),
+              }}
+            />
+          ))}
+        </div>
+      </button>
+      
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "50%",
+          border: "1px solid #e5e7eb",
+          background: "#ffffff",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+          transition: "background 0.2s, transform 0.2s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "#f3f4f6";
+          e.currentTarget.style.transform = "scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "#ffffff";
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+        data-testid="button-waveform-close"
+      >
+        <CloseIcon size={14} color="#6b7280" />
+      </button>
+    </div>
+  );
+}
+
 interface TranscriptBubbleProps {
   transcript: string;
   agentName: string;

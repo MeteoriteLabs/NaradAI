@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
 import {
-  MicButton,
-  CloseButton,
-  StatusIndicator,
-  TranscriptBubble,
+  WaveformMicButton,
   ChatIcon,
-  MuteButton,
 } from "./core/components";
 
 const WIDGET_STYLES = {
@@ -21,56 +17,27 @@ const WIDGET_STYLES = {
     gap: "12px",
     fontFamily: "Inter, system-ui, sans-serif",
   },
-  buttonGroup: {
-    display: "flex",
-    flexDirection: "column" as const,
-    alignItems: "center",
-    gap: "8px",
-  },
-  controls: {
-    display: "flex",
-    gap: "8px",
-    alignItems: "center",
-  },
 };
 
 export function FloatingBubble({
   isRecording,
   isSpeaking,
-  isMuted,
   onRecordToggle,
-  onMuteToggle,
   onClose,
-  agentName,
-  transcript,
+  audioLevel,
+  widgetColor,
 }: WidgetDesignProps) {
   return (
     <div style={WIDGET_STYLES.container}>
-      {transcript && (
-        <TranscriptBubble
-          transcript={transcript}
-          agentName={agentName}
-          variant="light"
-        />
-      )}
-
-      <div style={WIDGET_STYLES.buttonGroup}>
-        <StatusIndicator isRecording={isRecording} isSpeaking={isSpeaking} isMuted={isMuted} />
-
-        <div style={WIDGET_STYLES.controls}>
-          <MicButton
-            isRecording={isRecording}
-            onClick={onRecordToggle}
-            size="lg"
-          />
-          <MuteButton
-            isMuted={isMuted}
-            onClick={onMuteToggle}
-            size="md"
-          />
-          <CloseButton onClick={onClose} variant="light" size="md" />
-        </div>
-      </div>
+      <WaveformMicButton
+        isUserSpeaking={isRecording}
+        isAISpeaking={isSpeaking}
+        audioLevel={audioLevel}
+        onClick={onRecordToggle}
+        onClose={onClose}
+        size="lg"
+        primaryColor={widgetColor}
+      />
     </div>
   );
 }
@@ -78,8 +45,10 @@ export function FloatingBubble({
 export function FloatingBubbleTrigger({
   onClick,
   agentName,
+  widgetColor,
 }: WidgetTriggerProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const primaryColor = widgetColor || "#8b5cf6";
 
   return (
     <div
@@ -120,12 +89,12 @@ export function FloatingBubbleTrigger({
           height: "56px",
           borderRadius: "50%",
           border: "none",
-          background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
+          background: `linear-gradient(135deg, ${primaryColor}, #6366f1)`,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 8px 24px rgba(139, 92, 246, 0.4)",
+          boxShadow: `0 8px 24px ${primaryColor}66`,
           transition: "transform 0.2s, box-shadow 0.2s",
         }}
         onMouseDown={(e) => {

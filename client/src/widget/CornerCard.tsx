@@ -1,5 +1,5 @@
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
-import { MicButton, CloseButton, AgentAvatar, Waveform, MuteButton } from "./core/components";
+import { WaveformMicButton } from "./core/components";
 
 const CARD_STYLES = {
   container: {
@@ -7,189 +7,38 @@ const CARD_STYLES = {
     bottom: "24px",
     right: "24px",
     zIndex: 9999,
-    width: "320px",
-    background: "#ffffff",
-    borderRadius: "16px",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
     fontFamily: "Inter, system-ui, sans-serif",
-  },
-  header: {
-    background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
-    padding: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-  agentName: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#ffffff",
-  },
-  body: {
-    padding: "16px",
-    minHeight: "120px",
-  },
-  footer: {
-    padding: "16px",
-    borderTop: "1px solid #e5e7eb",
-    background: "#f9fafb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
   },
 };
 
 export function CornerCard({
   isRecording,
   isSpeaking,
-  isMuted,
   onRecordToggle,
-  onMuteToggle,
   onClose,
-  agentName,
-  transcript,
+  audioLevel,
+  widgetColor,
 }: WidgetDesignProps) {
   return (
     <div style={CARD_STYLES.container}>
-      <div style={CARD_STYLES.header}>
-        <div style={CARD_STYLES.headerContent}>
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "rgba(255, 255, 255, 0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <MicIcon size={18} />
-          </div>
-          <span style={CARD_STYLES.agentName}>{agentName}</span>
-        </div>
-        <CloseButton onClick={onClose} variant="transparent" size="sm" />
-      </div>
-
-      <div style={CARD_STYLES.body}>
-        {transcript ? (
-          <div style={{ display: "flex", gap: "12px" }}>
-            <AgentAvatar size={32} />
-            <div
-              style={{
-                background: "#f3f4f6",
-                borderRadius: "12px",
-                padding: "12px 16px",
-                flex: 1,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "#374151",
-                  margin: 0,
-                  lineHeight: "1.5",
-                }}
-              >
-                {transcript}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100px",
-              color: "#9ca3af",
-            }}
-          >
-            <MicIcon size={32} color="#9ca3af" />
-            <span style={{ fontSize: "13px", marginTop: "8px" }}>
-              Click the mic to start talking
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div style={CARD_STYLES.footer}>
-        {isMuted && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: "#ef4444",
-              }}
-            />
-            <span style={{ fontSize: "13px", color: "#ef4444" }}>
-              Muted
-            </span>
-          </div>
-        )}
-
-        {!isMuted && isSpeaking && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Waveform isActive={true} barCount={5} height={20} />
-            <span style={{ fontSize: "13px", color: "#6b7280" }}>
-              Speaking...
-            </span>
-          </div>
-        )}
-
-        {!isMuted && isRecording && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: "#ef4444",
-                animation: "pulse 1.5s infinite",
-              }}
-            />
-            <span style={{ fontSize: "13px", color: "#6b7280" }}>
-              Listening...
-            </span>
-          </div>
-        )}
-
-        <MicButton isRecording={isRecording} onClick={onRecordToggle} size="md" />
-        <MuteButton isMuted={isMuted} onClick={onMuteToggle} size="md" />
-      </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
+      <WaveformMicButton
+        isUserSpeaking={isRecording}
+        isAISpeaking={isSpeaking}
+        audioLevel={audioLevel}
+        onClick={onRecordToggle}
+        onClose={onClose}
+        size="xl"
+        primaryColor={widgetColor}
+      />
     </div>
   );
 }
 
-export function CornerCardTrigger({ onClick, agentName }: WidgetTriggerProps) {
+export function CornerCardTrigger({ onClick, agentName, widgetColor }: WidgetTriggerProps) {
+  const primaryColor = widgetColor || "#8b5cf6";
+  
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: "24px",
-        right: "24px",
-        zIndex: 9999,
-        fontFamily: "Inter, system-ui, sans-serif",
-      }}
-    >
+    <div style={CARD_STYLES.container}>
       <button
         onClick={onClick}
         style={{
@@ -197,22 +46,20 @@ export function CornerCardTrigger({ onClick, agentName }: WidgetTriggerProps) {
           alignItems: "center",
           gap: "10px",
           padding: "12px 20px",
-          background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
+          background: `linear-gradient(135deg, ${primaryColor}, #6366f1)`,
           border: "none",
           borderRadius: "12px",
           cursor: "pointer",
-          boxShadow: "0 8px 24px rgba(139, 92, 246, 0.4)",
+          boxShadow: `0 8px 24px ${primaryColor}66`,
           transition: "transform 0.2s, box-shadow 0.2s",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow =
-            "0 12px 32px rgba(139, 92, 246, 0.5)";
+          e.currentTarget.style.boxShadow = `0 12px 32px ${primaryColor}80`;
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow =
-            "0 8px 24px rgba(139, 92, 246, 0.4)";
+          e.currentTarget.style.boxShadow = `0 8px 24px ${primaryColor}66`;
         }}
         data-testid="button-voice-trigger"
       >
