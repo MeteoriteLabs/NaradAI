@@ -78,20 +78,19 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
     }
   }, [legacyVoice.isOpen, streamingVoice.isConnected, streamingVoice.connect]);
 
-  // Auto-start handling: when widget opens with autoStart enabled, start streaming
+  // Auto-start handling: ALWAYS start streaming when widget opens (no click needed)
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     
     const shouldAutoStart = 
       legacyVoice.isOpen && 
-      legacyVoice.agentData?.autoStart && 
       streamingVoice.isConnected && 
       !streamingVoice.isStreaming && 
       !hasAutoStartedRef.current;
     
     if (shouldAutoStart) {
       hasAutoStartedRef.current = true;
-      console.log('[Narada Stream] Auto-starting voice...');
+      console.log('[Narada Stream] Auto-starting voice (no click needed)...');
       // Small delay to ensure AudioContext is ready after user interaction
       timeout = setTimeout(async () => {
         // Guard against calling if already streaming (idempotent safety)
@@ -108,13 +107,12 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
         clearTimeout(timeout);
       }
     };
-  }, [legacyVoice.isOpen, legacyVoice.agentData?.autoStart, streamingVoice.isConnected, streamingVoice.isStreaming, streamingVoice.startStreaming]);
+  }, [legacyVoice.isOpen, streamingVoice.isConnected, streamingVoice.isStreaming, streamingVoice.startStreaming]);
 
-  // Request greeting once session is ready and streaming is active
+  // Request greeting once session is ready and streaming is active (always greet since we auto-start)
   useEffect(() => {
     if (
       legacyVoice.isOpen &&
-      legacyVoice.agentData?.autoStart &&
       streamingVoice.isSessionReady &&
       streamingVoice.isStreaming &&
       !hasRequestedGreetingRef.current
@@ -123,7 +121,7 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
       console.log('[Narada Stream] Session ready, requesting AI greeting...');
       streamingVoice.requestGreeting();
     }
-  }, [legacyVoice.isOpen, legacyVoice.agentData?.autoStart, streamingVoice.isSessionReady, streamingVoice.isStreaming, streamingVoice.requestGreeting]);
+  }, [legacyVoice.isOpen, streamingVoice.isSessionReady, streamingVoice.isStreaming, streamingVoice.requestGreeting]);
 
   // Handle close: disconnect everything when closing widget
   const handleClose = () => {

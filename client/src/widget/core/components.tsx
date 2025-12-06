@@ -765,12 +765,12 @@ export function DualWaveformControl({
               ? "rgba(20, 184, 166, 1)"  // Teal when mic active
               : isAISpeaking 
                 ? "rgba(139, 92, 246, 1)"  // Purple when AI speaking
-                : "rgba(255, 255, 255, 0.5)",  // Gray when idle
+                : "rgba(255, 255, 255, 0.6)",  // Light gray when ready
             textTransform: "uppercase",
             letterSpacing: "0.5px",
           }}
         >
-          {isRecording ? "You" : isAISpeaking ? "AI" : "Tap mic"}
+          {isRecording ? "You" : isAISpeaking ? "AI" : "Ready"}
         </span>
         <span
           style={{
@@ -779,7 +779,7 @@ export function DualWaveformControl({
             marginTop: "2px",
           }}
         >
-          {isRecording ? "Speaking" : isAISpeaking ? "Speaking" : "to start"}
+          {isRecording ? "Speaking" : isAISpeaking ? "Speaking" : "Listening"}
         </span>
       </div>
 
