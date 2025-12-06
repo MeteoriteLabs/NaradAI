@@ -15,7 +15,8 @@ import {
   Sparkles,
   Settings,
   Database,
-  Loader2
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 
 export default function SuperAdminDashboard() {
@@ -119,6 +120,15 @@ export default function SuperAdminDashboard() {
       testId: "button-naradaai-account",
       variant: "default" as const,
       loading: loginLoading === "naradaai"
+    },
+    { 
+      label: "Test Widget", 
+      description: "Preview the NaradaAI voice widget in a test environment",
+      icon: ExternalLink, 
+      onClick: () => window.open('/widget-test/naradaai-agent-001', '_blank'),
+      testId: "button-test-widget",
+      variant: "default" as const,
+      loading: false
     },
     { 
       label: "Login as Demo User", 
@@ -232,7 +242,7 @@ export default function SuperAdminDashboard() {
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Loading...
                         </>
-                      ) : action.label.includes("Login") ? "Launch" : "Open"}
+                      ) : action.label.includes("Login") ? "Launch" : action.label.includes("Test") ? "Preview" : "Open"}
                     </Button>
                   </div>
                 </CardContent>
