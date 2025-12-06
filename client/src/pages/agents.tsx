@@ -270,7 +270,7 @@ export default function AgentsPage() {
                     <div className="flex items-center gap-1.5 mt-1">
                       <Badge variant="secondary" className="text-xs">
                         <Mic className="w-3 h-3 mr-1" />
-                        {agent.voiceStyle || "alloy"}
+                        {elevenlabsVoiceOptions.find(v => v.value === agent.elevenlabsVoiceId)?.label?.split(' ')[0] || "Sarah"}
                       </Badge>
                     </div>
                   </div>
