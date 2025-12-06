@@ -151,6 +151,21 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Super admin: Get all users
+  app.get("/api/superadmin/users", async (req, res) => {
+    try {
+      const isSuperAdminSession = (req.session as any).isSuperAdmin === true;
+      if (!isSuperAdminSession) {
+        return res.status(403).json({ error: "Super admin access required" });
+      }
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   // Demo login - bypasses OAuth for demo purposes (super admin only)
   app.get("/api/demo-login", async (req, res) => {
     try {
