@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
 import {
-  WaveformMicButton,
+  DualWaveformControl,
   ChatIcon,
 } from "./core/components";
 
@@ -29,13 +29,12 @@ export function FloatingBubble({
 }: WidgetDesignProps) {
   return (
     <div style={WIDGET_STYLES.container}>
-      <WaveformMicButton
-        isUserSpeaking={isRecording}
+      <DualWaveformControl
+        isRecording={isRecording}
         isAISpeaking={isSpeaking}
         audioLevel={audioLevel}
         onClick={onRecordToggle}
         onClose={onClose}
-        size="lg"
         primaryColor={widgetColor}
       />
     </div>

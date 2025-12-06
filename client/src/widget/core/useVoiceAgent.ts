@@ -183,9 +183,10 @@ export function useVoiceAgent({
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    if (audioContextRef.current) {
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
     }
+    audioContextRef.current = null;
     setAudioLevel(0);
   };
 

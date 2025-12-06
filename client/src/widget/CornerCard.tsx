@@ -1,5 +1,5 @@
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
-import { WaveformMicButton } from "./core/components";
+import { DualWaveformControl } from "./core/components";
 
 const CARD_STYLES = {
   container: {
@@ -21,13 +21,12 @@ export function CornerCard({
 }: WidgetDesignProps) {
   return (
     <div style={CARD_STYLES.container}>
-      <WaveformMicButton
-        isUserSpeaking={isRecording}
+      <DualWaveformControl
+        isRecording={isRecording}
         isAISpeaking={isSpeaking}
         audioLevel={audioLevel}
         onClick={onRecordToggle}
         onClose={onClose}
-        size="xl"
         primaryColor={widgetColor}
       />
     </div>

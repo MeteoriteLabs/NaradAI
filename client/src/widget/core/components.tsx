@@ -624,4 +624,242 @@ export function ChatIcon({ size = 24 }: { size?: number }) {
   );
 }
 
+// Dual Waveform Control - Shows separate mic button and AI waveform indicator
+// Mic button on left (user's voice), AI waveform on right
+interface DualWaveformControlProps {
+  isRecording: boolean;  // Mic is active/listening
+  isAISpeaking: boolean;  // AI is talking
+  audioLevel?: number;  // User's audio level (0-1)
+  onClick: () => void;  // Toggle mic
+  onClose: () => void;  // Close widget
+  primaryColor?: string;
+}
+
+export function DualWaveformControl({
+  isRecording,
+  isAISpeaking,
+  audioLevel = 0,
+  onClick,
+  onClose,
+  primaryColor = DEFAULT_PRIMARY_COLOR,
+}: DualWaveformControlProps) {
+  const [userWaveform, setUserWaveform] = useState<number[]>(Array(4).fill(0.15));
+  const [aiWaveform, setAiWaveform] = useState<number[]>(Array(4).fill(0.15));
+
+  // Animate user waveform based on audio level
+  useEffect(() => {
+    if (!isRecording) {
+      setUserWaveform(Array(4).fill(0.15));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const baseLevel = Math.max(0.2, audioLevel);
+      setUserWaveform(prev => prev.map(() => 
+        baseLevel * 0.4 + Math.random() * baseLevel * 0.8
+      ));
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [isRecording, audioLevel]);
+
+  // Animate AI waveform when AI is speaking
+  useEffect(() => {
+    if (!isAISpeaking) {
+      setAiWaveform(Array(4).fill(0.15));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setAiWaveform(prev => prev.map(() => 
+        0.3 + Math.random() * 0.7
+      ));
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [isAISpeaking]);
+
+  const barMaxHeight = 20;
+  const barWidth = 3;
+  const barGap = 2;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "10px 16px",
+        background: "linear-gradient(135deg, rgba(17, 17, 27, 0.95) 0%, rgba(30, 30, 50, 0.95) 100%)",
+        borderRadius: "9999px",
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+      }}
+    >
+      {/* Mic Button with User Waveform */}
+      <button
+        onClick={onClick}
+        style={{
+          width: "52px",
+          height: "52px",
+          borderRadius: "50%",
+          border: "none",
+          background: isRecording 
+            ? "linear-gradient(135deg, #14b8a6, #0d9488)"  // Teal when active
+            : "linear-gradient(135deg, #374151, #1f2937)",  // Gray when inactive
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: isRecording 
+            ? "0 4px 16px rgba(20, 184, 166, 0.5)"
+            : "0 2px 8px rgba(0, 0, 0, 0.3)",
+          transition: "all 0.2s ease",
+          position: "relative",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+        data-testid="button-mic-control"
+      >
+        {isRecording ? (
+          // Waveform bars when recording
+          <div style={{ display: "flex", alignItems: "center", gap: `${barGap}px` }}>
+            {userWaveform.map((barHeight, i) => (
+              <div
+                key={i}
+                style={{
+                  width: `${barWidth}px`,
+                  borderRadius: "9999px",
+                  transition: "all 0.08s ease-out",
+                  height: `${Math.max(4, barHeight * barMaxHeight)}px`,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          // Mic icon when not recording
+          <MicIcon size={22} />
+        )}
+      </button>
+
+      {/* Status label */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          minWidth: "60px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 500,
+            color: isRecording 
+              ? "rgba(20, 184, 166, 1)"  // Teal when mic active
+              : isAISpeaking 
+                ? "rgba(139, 92, 246, 1)"  // Purple when AI speaking
+                : "rgba(255, 255, 255, 0.5)",  // Gray when idle
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          {isRecording ? "You" : isAISpeaking ? "AI" : "Tap mic"}
+        </span>
+        <span
+          style={{
+            fontSize: "9px",
+            color: "rgba(255, 255, 255, 0.4)",
+            marginTop: "2px",
+          }}
+        >
+          {isRecording ? "Speaking" : isAISpeaking ? "Speaking" : "to start"}
+        </span>
+      </div>
+
+      {/* AI Waveform Indicator */}
+      <div
+        style={{
+          width: "52px",
+          height: "52px",
+          borderRadius: "50%",
+          background: isAISpeaking 
+            ? `linear-gradient(135deg, ${primaryColor}, ${DEFAULT_SECONDARY_COLOR})`  // Purple when speaking
+            : "linear-gradient(135deg, #374151, #1f2937)",  // Gray when quiet
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: isAISpeaking 
+            ? `0 4px 16px ${primaryColor}66`
+            : "0 2px 8px rgba(0, 0, 0, 0.3)",
+          transition: "all 0.3s ease",
+        }}
+        data-testid="indicator-ai-waveform"
+      >
+        {isAISpeaking ? (
+          // Animated waveform when AI speaking
+          <div style={{ display: "flex", alignItems: "center", gap: `${barGap}px` }}>
+            {aiWaveform.map((barHeight, i) => (
+              <div
+                key={i}
+                style={{
+                  width: `${barWidth}px`,
+                  borderRadius: "9999px",
+                  transition: "all 0.08s ease-out",
+                  height: `${Math.max(4, barHeight * barMaxHeight)}px`,
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          // AI icon when quiet
+          <AIIcon size={20} />
+        )}
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "50%",
+          border: "none",
+          background: "rgba(255, 255, 255, 0.1)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginLeft: "4px",
+          transition: "background 0.2s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+        }}
+        data-testid="button-dual-close"
+      >
+        <CloseIcon size={14} color="rgba(255, 255, 255, 0.7)" />
+      </button>
+    </div>
+  );
+}
+
+function AIIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="white" opacity={0.6}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+    </svg>
+  );
+}
+
 export { MicIcon, CloseIcon };

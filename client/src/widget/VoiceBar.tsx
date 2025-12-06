@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { WidgetDesignProps, WidgetTriggerProps } from "./core/types";
-import { WaveformMicButton } from "./core/components";
+import { DualWaveformControl } from "./core/components";
 
 const VOICE_BAR_STYLES = {
   container: {
@@ -34,13 +34,12 @@ export function VoiceBar({
 }: WidgetDesignProps) {
   return (
     <div style={VOICE_BAR_STYLES.container}>
-      <WaveformMicButton
-        isUserSpeaking={isRecording}
+      <DualWaveformControl
+        isRecording={isRecording}
         isAISpeaking={isSpeaking}
         audioLevel={audioLevel}
         onClick={onRecordToggle}
         onClose={onClose}
-        size="lg"
         primaryColor={widgetColor}
       />
     </div>

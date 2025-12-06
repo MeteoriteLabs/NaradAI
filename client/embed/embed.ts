@@ -40,13 +40,17 @@
     shadowRoot.appendChild(styleLink);
 
     const baseUrlParsed = new URL(baseUrl);
-    const websocketUrl = `${baseUrlParsed.protocol === 'https:' ? 'wss:' : 'ws:'}//${baseUrlParsed.host}/ws`;
+    const wsProtocol = baseUrlParsed.protocol === 'https:' ? 'wss:' : 'ws:';
+    const websocketUrl = `${wsProtocol}//${baseUrlParsed.host}/ws`;
+    const streamingWebsocketUrl = `${wsProtocol}//${baseUrlParsed.host}/ws-stream`;
 
     if ((window as any).NaradaWidget) {
       (window as any).NaradaWidget.mount(widgetContainer, {
         agentId,
         websocketUrl,
+        streamingWebsocketUrl,
         apiBase: baseUrl,
+        useStreaming: true,
       });
 
       trackPageView();

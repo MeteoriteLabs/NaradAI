@@ -1,0 +1,37 @@
+share-modal.js:1 Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')
+    at share-modal.js:1:135Understand this error
+embed.js:49 [Narada AI] Widget mounted for agent: fbdb2744-ddd3-4948-a9cc-d182c47c3df3
+embed.js:52 [Narada AI] Page view: https://670e9869-65b8-4e48-a8c2-3f36b0ef1ca3-00-7pevgpy1l275.picard.replit.dev/widget-test/fbdb2744-ddd3-4948-a9cc-d182c47c3df3
+widget.js:165 [Narada] Using legacy mode
+widget.js:119 Connected to voice agent: Support Bot
+widget.js:119 [Narada] Toggle recording, current state: false
+widget.js:119 [Narada] Starting recording...
+widget.js:119 [Narada] Microphone access granted
+widget.js:119 [Narada] Using mime type: audio/webm
+widget.js:119 [Narada] MediaRecorder started
+widget.js:119 [Narada] Audio chunk received, size: 15618
+7widget.js:119 [Narada] Audio chunk received, size: 16438
+widget.js:119 [Narada] Toggle recording, current state: true
+widget.js:119 [Narada] Stopping recording...
+widget.js:119 [Narada] Audio chunk received, size: 14505
+widget.js:119 [Narada] Recording stopped, chunks: 9
+widget.js:119 [Narada] Audio blob created, size: 145189
+widget.js:119 [Narada] Sending audio to server, size: 145189
+widget.js:119 Uncaught (in promise) InvalidStateError: Cannot close a closed AudioContext.
+$ @ widget.js:119
+se.onstop @ widget.js:119Understand this error
+widget.js:119 [Narada] Sending audio data via WebSocket
+widget.js:119 [Narada] Toggle recording, current state: false
+widget.js:119 [Narada] Starting recording...
+widget.js:119 [Narada] Microphone access granted
+widget.js:119 [Narada] Using mime type: audio/webm
+widget.js:119 [Narada] MediaRecorder started
+widget.js:119 [Narada] Audio chunk received, size: 15618
+4fbdb2744-ddd3-4948-a9cc-d182c47c3df3:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+8widget.js:119 [Narada] Audio chunk received, size: 16438
+widget.js:119 [Narada] Auto-stopping after 10 seconds
+widget.js:119 [Narada] Audio chunk received, size: 13539
+widget.js:119 [Narada] Recording stopped, chunks: 10
+widget.js:119 [Narada] Audio blob created, size: 160661
+widget.js:119 [Narada] Sending audio to server, size: 160661
+widget.js:119 [Narada] Sending audio data via WebSocket
