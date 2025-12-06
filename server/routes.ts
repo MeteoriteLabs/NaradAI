@@ -483,6 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         voiceStyle: agent.voiceStyle,
         widgetDesign: agent.widgetDesign,
         widgetColor: agent.widgetColor,
+        autoStart: agent.autoStart,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

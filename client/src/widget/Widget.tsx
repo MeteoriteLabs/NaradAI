@@ -51,11 +51,14 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
   // Track if we've already auto-started for this widget open session
   const hasAutoStartedRef = useRef(false);
   const wasOpenRef = useRef(false);
+  const hasRequestedMicPermissionRef = useRef(false);
+  const hasAutoOpenedRef = useRef(false);
 
-  // Reset auto-start flag when widget closes
+  // Reset auto-start and auto-opened flags when widget closes
   useEffect(() => {
     if (!legacyVoice.isOpen && wasOpenRef.current) {
       hasAutoStartedRef.current = false;
+      hasAutoOpenedRef.current = false;
     }
     wasOpenRef.current = legacyVoice.isOpen;
   }, [legacyVoice.isOpen]);
@@ -69,6 +72,58 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
       hasRequestedGreetingRef.current = false;
     }
   }, [legacyVoice.isOpen]);
+
+  // Request mic permission early on page load (before widget opens)
+  useEffect(() => {
+    if (!hasRequestedMicPermissionRef.current && legacyVoice.agentData) {
+      hasRequestedMicPermissionRef.current = true;
+      console.log('[Narada Stream] Pre-requesting microphone permission...');
+      navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        } 
+      })
+        .then(stream => {
+          console.log('[Narada Stream] Microphone permission granted early');
+          // Stop the stream immediately - we just needed permission
+          stream.getTracks().forEach(track => track.stop());
+        })
+        .catch(err => {
+          console.log('[Narada Stream] Microphone permission not granted:', err.message);
+        });
+    }
+  }, [legacyVoice.agentData]);
+
+  // Auto-open widget if agent's autoStart setting is enabled
+  // Step 1: Connect to streaming when autoStart is enabled
+  useEffect(() => {
+    if (
+      legacyVoice.agentData?.autoStart && 
+      !hasAutoOpenedRef.current && 
+      !legacyVoice.isOpen &&
+      !streamingVoice.isConnected
+    ) {
+      console.log('[Narada Stream] Auto-start enabled, connecting to streaming...');
+      streamingVoice.connect();
+    }
+  }, [legacyVoice.agentData, legacyVoice.isOpen, streamingVoice.isConnected, streamingVoice.connect]);
+
+  // Step 2: Open widget once streaming is connected
+  useEffect(() => {
+    if (
+      legacyVoice.agentData?.autoStart && 
+      !hasAutoOpenedRef.current && 
+      !legacyVoice.isOpen &&
+      streamingVoice.isConnected
+    ) {
+      hasAutoOpenedRef.current = true;
+      console.log('[Narada Stream] Streaming connected, auto-opening widget...');
+      legacyVoice.openWidget();
+    }
+  }, [legacyVoice.agentData, legacyVoice.isOpen, streamingVoice.isConnected, legacyVoice.openWidget]);
 
   // Reconnect streaming voice when widget opens (in case it was disconnected)
   useEffect(() => {
