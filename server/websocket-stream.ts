@@ -565,16 +565,12 @@ function buildSystemInstructions(
 }
 
 function mapVoiceStyle(voiceStyle?: string | null): string {
-  // Map TTS voices to Realtime API voices
-  const voiceMap: Record<string, string> = {
-    alloy: "alloy",
-    echo: "echo",
-    fable: "fable",
-    onyx: "onyx",
-    nova: "nova",
-    shimmer: "shimmer",
-  };
-  return voiceMap[voiceStyle || "alloy"] || "alloy";
+  // Map to supported OpenAI Realtime API voices
+  const supportedVoices = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
+  if (voiceStyle && supportedVoices.includes(voiceStyle)) {
+    return voiceStyle;
+  }
+  return "alloy";
 }
 
 function sendError(clientWs: StreamingClient, message: string) {

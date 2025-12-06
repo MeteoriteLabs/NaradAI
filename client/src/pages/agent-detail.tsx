@@ -47,11 +47,13 @@ type AgentFormValues = z.infer<typeof agentFormSchema>;
 
 const openaiVoiceOptions = [
   { value: "alloy", label: "Alloy" },
+  { value: "ash", label: "Ash" },
+  { value: "ballad", label: "Ballad" },
+  { value: "coral", label: "Coral" },
   { value: "echo", label: "Echo" },
-  { value: "fable", label: "Fable" },
-  { value: "onyx", label: "Onyx" },
-  { value: "nova", label: "Nova" },
+  { value: "sage", label: "Sage" },
   { value: "shimmer", label: "Shimmer" },
+  { value: "verse", label: "Verse" },
 ];
 
 const elevenLabsVoiceOptions = ELEVENLABS_VOICES.map((v) => ({
