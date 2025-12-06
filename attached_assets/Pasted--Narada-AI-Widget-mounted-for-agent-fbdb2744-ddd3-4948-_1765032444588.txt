@@ -1,0 +1,136 @@
+[Narada AI] Widget mounted for agent: fbdb2744-ddd3-4948-a9cc-d182c47c3df3
+embed.js:52 [Narada AI] Page view: https://79256c7d-1ca0-469d-9c63-d153aa35e05a-00-94r2fm3h4aew.kirk.replit.dev/
+widget.js:175 [Narada] Using streaming mode
+widget.js:175 [Narada Stream] Hook mounted, connecting...
+widget.js:175 [Narada Stream] Connecting to WebSocket: wss://670e9869-65b8-4e48-a8c2-3f36b0ef1ca3-00-7pevgpy1l275.picard.replit.dev/ws-stream
+widget.js:175 [Narada Stream] WebSocket connected
+widget.js:175 [Narada Stream] Server message: session.ready
+widget.js:129 Connected to voice agent: Support Bot
+widget.js:175 [Narada Stream] Starting streaming...
+widget.js:175 [Narada Stream] Microphone access granted
+widget.js:175 [Narada Stream] Streaming started
+widget.js:175 [Narada Stream] Server message: user.speaking_start
+widget.js:175 [Narada Stream] Server message: user.speaking_stop
+widget.js:175 [Narada Stream] Server message: response.start
+widget.js:175 [Narada Stream] Server message: transcript.final
+widget.js:175 [Narada Stream] Transcript: Hello. (final)
+5widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 4800 bytes
+widget.js:175 [Narada Stream] Created playback AudioContext
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.100 s
+widget.js:175 [Narada Stream] Received audio chunk: 7200 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.150 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+2widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+3widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 33600 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.700 s
+widget.js:175 [Narada Stream] Server message: response.text
+widget.js:175 [Narada Stream] AI Response: Hi there! How can I assist you today?
+widget.js:175 [Narada Stream] Server message: response.end
+widget.js:175 [Narada Stream] Server message: user.speaking_start
+widget.js:175 [Narada Stream] Server message: user.speaking_stop
+widget.js:175 [Narada Stream] Server message: response.start
+5widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 4800 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.100 s
+widget.js:175 [Narada Stream] Received audio chunk: 7200 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.150 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+2widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Server message: transcript.final
+widget.js:175 [Narada Stream] Transcript: आप के लिए क्या करने के लिए हैं? (final)
+3widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+5widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+7widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing next chunk from queue
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing next chunk from queue
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
+6widget.js:175 [Narada Stream] Server message: response.text.delta
+widget.js:175 [Narada Stream] Received audio chunk: 12000 bytes
+widget.js:175 [Narada Stream] Queued audio buffer, queue length: 1
+widget.js:175 [Narada Stream] Playing next chunk from queue
+widget.js:175 [Narada Stream] Playing audio buffer, duration: 0.250 s
