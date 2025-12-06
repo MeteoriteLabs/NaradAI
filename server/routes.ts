@@ -493,7 +493,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/widget.js", async (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
     try {
       const fs = await import('fs/promises');
@@ -511,7 +513,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/widget.css", async (req, res) => {
     res.setHeader('Content-Type', 'text/css');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
     try {
       const fs = await import('fs/promises');
@@ -652,7 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/embed.js", (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
     const embedScript = `
 (function() {
