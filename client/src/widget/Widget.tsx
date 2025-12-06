@@ -60,6 +60,24 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
     wasOpenRef.current = legacyVoice.isOpen;
   }, [legacyVoice.isOpen]);
 
+  // Track if greeting has been requested for this session
+  const hasRequestedGreetingRef = useRef(false);
+
+  // Reset greeting flag when widget closes
+  useEffect(() => {
+    if (!legacyVoice.isOpen) {
+      hasRequestedGreetingRef.current = false;
+    }
+  }, [legacyVoice.isOpen]);
+
+  // Reconnect streaming voice when widget opens (in case it was disconnected)
+  useEffect(() => {
+    if (legacyVoice.isOpen && !streamingVoice.isConnected) {
+      console.log('[Narada Stream] Widget opened, reconnecting...');
+      streamingVoice.connect();
+    }
+  }, [legacyVoice.isOpen, streamingVoice.isConnected, streamingVoice.connect]);
+
   // Auto-start handling: when widget opens with autoStart enabled, start streaming
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -75,10 +93,11 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
       hasAutoStartedRef.current = true;
       console.log('[Narada Stream] Auto-starting voice...');
       // Small delay to ensure AudioContext is ready after user interaction
-      timeout = setTimeout(() => {
+      timeout = setTimeout(async () => {
         // Guard against calling if already streaming (idempotent safety)
         if (!streamingVoice.isStreaming) {
-          streamingVoice.startStreaming();
+          // Start streaming (requests mic permission)
+          await streamingVoice.startStreaming();
         }
       }, 100);
     }
@@ -90,6 +109,21 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
       }
     };
   }, [legacyVoice.isOpen, legacyVoice.agentData?.autoStart, streamingVoice.isConnected, streamingVoice.isStreaming, streamingVoice.startStreaming]);
+
+  // Request greeting once session is ready and streaming is active
+  useEffect(() => {
+    if (
+      legacyVoice.isOpen &&
+      legacyVoice.agentData?.autoStart &&
+      streamingVoice.isSessionReady &&
+      streamingVoice.isStreaming &&
+      !hasRequestedGreetingRef.current
+    ) {
+      hasRequestedGreetingRef.current = true;
+      console.log('[Narada Stream] Session ready, requesting AI greeting...');
+      streamingVoice.requestGreeting();
+    }
+  }, [legacyVoice.isOpen, legacyVoice.agentData?.autoStart, streamingVoice.isSessionReady, streamingVoice.isStreaming, streamingVoice.requestGreeting]);
 
   // Handle close: disconnect everything when closing widget
   const handleClose = () => {

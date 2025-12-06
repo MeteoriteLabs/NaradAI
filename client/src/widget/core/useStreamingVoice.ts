@@ -4,6 +4,7 @@ import { createWorkletBlobUrl } from "./audio-processor.worklet";
 interface StreamingVoiceState {
   isStreaming: boolean;
   isConnected: boolean;
+  isSessionReady: boolean; // OpenAI session is fully initialized
   isAISpeaking: boolean;
   isMuted: boolean;
   transcript: string;
@@ -26,6 +27,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const [state, setState] = useState<StreamingVoiceState>({
     isStreaming: false,
     isConnected: false,
+    isSessionReady: false,
     isAISpeaking: false,
     isMuted: false,
     transcript: "",
@@ -106,7 +108,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
     ws.onclose = () => {
       console.log("[Narada Stream] WebSocket closed");
-      setState(s => ({ ...s, isConnected: false }));
+      setState(s => ({ ...s, isConnected: false, isSessionReady: false }));
     };
 
     wsRef.current = ws;
@@ -117,6 +119,18 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     console.log("[Narada Stream] Server message:", msg.type);
     
     switch (msg.type) {
+      case "session.ready":
+        // OpenAI session is fully initialized and ready for interaction
+        console.log("[Narada Stream] Session ready for agent:", msg.agent?.name);
+        setState(s => ({ ...s, isSessionReady: true }));
+        break;
+        
+      case "session.ended":
+        // OpenAI session ended (e.g., server-side disconnect)
+        console.log("[Narada Stream] Session ended, needs reconnect");
+        setState(s => ({ ...s, isSessionReady: false }));
+        break;
+        
       case "transcript.partial":
         setState(s => ({ ...s, partialTranscript: msg.text }));
         onTranscript?.(msg.text, false);
@@ -417,6 +431,16 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     setState(s => ({ ...s, isAISpeaking: false }));
   }, []);
 
+  // Request AI greeting when widget opens
+  const requestGreeting = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log("[Narada Stream] Requesting AI greeting...");
+      wsRef.current.send(JSON.stringify({ type: "greeting.request" }));
+    } else {
+      console.warn("[Narada Stream] Cannot request greeting - not connected");
+    }
+  }, []);
+
   // Audio level monitoring
   const startLevelMonitoring = useCallback(() => {
     if (!analyserRef.current) return;
@@ -549,6 +573,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     setState(s => ({
       ...s,
       isConnected: false,
+      isSessionReady: false,
       isStreaming: false,
       isAISpeaking: false,
       audioLevel: 0,
@@ -567,5 +592,6 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     toggleMute,
     setMuted,
     interruptAI,
+    requestGreeting,
   };
 }

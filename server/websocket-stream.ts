@@ -120,6 +120,30 @@ async function handleClientMessage(clientWs: StreamingClient, message: any) {
       }
       break;
 
+    case "greeting.request":
+      // Client requested AI greeting when widget opens
+      if (clientWs.openaiWs?.readyState === WebSocket.OPEN) {
+        console.log("[Stream] Triggering AI greeting");
+        // Create a conversation item with a greeting prompt and trigger response
+        clientWs.openaiWs.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: "[User just opened the voice widget. Greet them warmly and briefly, introduce yourself, and ask how you can help. Keep it short and natural - 1-2 sentences max.]"
+              }
+            ]
+          }
+        }));
+        clientWs.openaiWs.send(JSON.stringify({
+          type: "response.create"
+        }));
+      }
+      break;
+
     default:
       console.warn("[Stream] Unknown message type:", message.type);
   }
@@ -256,6 +280,10 @@ async function initSession(clientWs: StreamingClient, message: any) {
 
     openaiWs.on("close", () => {
       console.log("[Stream] OpenAI WebSocket closed");
+      // Notify client that session ended so they can reconnect
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({ type: "session.ended" }));
+      }
     });
 
   } catch (error) {
