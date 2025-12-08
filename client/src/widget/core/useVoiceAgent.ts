@@ -7,6 +7,7 @@ interface UseVoiceAgentOptions {
   agentId: string;
   websocketUrl: string;
   apiBase?: string;
+  continuousListening?: boolean;
   onFlowStart?: (steps: Step[]) => void;
   onLeadCapture?: () => void;
 }
@@ -30,6 +31,7 @@ export function useVoiceAgent({
   agentId,
   websocketUrl,
   apiBase = '',
+  continuousListening = true,
   onFlowStart,
   onLeadCapture,
 }: UseVoiceAgentOptions): UseVoiceAgentReturn {
@@ -50,6 +52,10 @@ export function useVoiceAgent({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const hasAutoStartedRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const isWidgetOpenRef = useRef(false);
+  const recordingAbortedRef = useRef(false);
 
   useEffect(() => {
     // Use public widget endpoint for agent config
@@ -220,84 +226,112 @@ export function useVoiceAgent({
     reader.readAsDataURL(audioBlob);
   };
 
+  const startContinuousRecording = useCallback(async () => {
+    if (isRecording || streamRef.current) return;
+    
+    console.log('[Narada] Starting continuous recording...');
+    recordingAbortedRef.current = false;
+    setIsRecording(true);
+    setTranscript(undefined);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      if (recordingAbortedRef.current || !isWidgetOpenRef.current) {
+        console.log('[Narada] Recording aborted during getUserMedia, stopping stream');
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        return;
+      }
+      
+      streamRef.current = stream;
+      console.log('[Narada] Microphone access granted for continuous listening');
+      startAudioVisualization(stream);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+        ? 'audio/webm' 
+        : 'audio/wav';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+
+      // Send each audio chunk immediately as it becomes available
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          const audioBlob = new Blob([event.data], { type: mimeType });
+          console.log('[Narada] Sending audio chunk, size:', audioBlob.size);
+          sendAudioToServer(audioBlob);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        console.log('[Narada] MediaRecorder stopped');
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('[Narada] MediaRecorder error:', event);
+      };
+
+      // Send audio chunks every 3 seconds for continuous processing
+      mediaRecorder.start(3000);
+      console.log('[Narada] Continuous recording started');
+    } catch (error) {
+      console.error("[Narada] Error accessing microphone:", error);
+      setIsRecording(false);
+      stopAudioVisualization();
+    }
+  }, [isRecording]);
+
+  const stopContinuousRecording = useCallback(() => {
+    console.log('[Narada] Stopping continuous recording...');
+    recordingAbortedRef.current = true;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsRecording(false);
+    stopAudioVisualization();
+  }, []);
+
   const toggleRecording = useCallback(async () => {
     console.log('[Narada] Toggle recording, current state:', isRecording);
     
     if (isRecording) {
-      console.log('[Narada] Stopping recording...');
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
-      setIsRecording(false);
-      stopAudioVisualization();
+      stopContinuousRecording();
     } else {
-      console.log('[Narada] Starting recording...');
-      setIsRecording(true);
-      setTranscript(undefined);
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[Narada] Microphone access granted');
-        startAudioVisualization(stream);
-
-        // Use webm format which is well supported
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-          ? 'audio/webm' 
-          : 'audio/wav';
-        console.log('[Narada] Using mime type:', mimeType);
-        
-        const mediaRecorder = new MediaRecorder(stream, { mimeType });
-        mediaRecorderRef.current = mediaRecorder;
-        const audioChunks: BlobPart[] = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-          console.log('[Narada] Audio chunk received, size:', event.data.size);
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
-        };
-
-        mediaRecorder.onstop = () => {
-          console.log('[Narada] Recording stopped, chunks:', audioChunks.length);
-          const audioBlob = new Blob(audioChunks, { type: mimeType });
-          console.log('[Narada] Audio blob created, size:', audioBlob.size);
-          sendAudioToServer(audioBlob);
-          stream.getTracks().forEach((track) => track.stop());
-          stopAudioVisualization();
-        };
-
-        mediaRecorder.onerror = (event) => {
-          console.error('[Narada] MediaRecorder error:', event);
-        };
-
-        // Request data every second to ensure we get chunks
-        mediaRecorder.start(1000);
-        console.log('[Narada] MediaRecorder started');
-
-        // Auto-stop after 10 seconds
-        setTimeout(() => {
-          if (mediaRecorder.state === "recording") {
-            console.log('[Narada] Auto-stopping after 10 seconds');
-            mediaRecorder.stop();
-            setIsRecording(false);
-          }
-        }, 10000);
-      } catch (error) {
-        console.error("[Narada] Error accessing microphone:", error);
-        setIsRecording(false);
-        stopAudioVisualization();
-      }
+      await startContinuousRecording();
     }
-  }, [isRecording]);
+  }, [isRecording, startContinuousRecording, stopContinuousRecording]);
 
-  const openWidget = useCallback(() => setIsOpen(true), []);
+  const openWidget = useCallback(() => {
+    isWidgetOpenRef.current = true;
+    setIsOpen(true);
+  }, []);
 
   const closeWidget = useCallback(() => {
+    isWidgetOpenRef.current = false;
     setIsOpen(false);
-    if (isRecording) {
-      toggleRecording();
+    stopContinuousRecording();
+    hasAutoStartedRef.current = false;
+  }, [stopContinuousRecording]);
+
+  useEffect(() => {
+    return () => {
+      stopContinuousRecording();
+    };
+  }, [stopContinuousRecording]);
+
+  // Auto-start continuous recording when widget opens
+  useEffect(() => {
+    if (isOpen && isConnected && continuousListening && !hasAutoStartedRef.current && !isRecording) {
+      hasAutoStartedRef.current = true;
+      console.log('[Narada] Auto-starting continuous listening...');
+      startContinuousRecording();
     }
-  }, [isRecording, toggleRecording]);
+  }, [isOpen, isConnected, continuousListening, isRecording, startContinuousRecording]);
 
   const sendMessage = useCallback(
     (message: string) => {
