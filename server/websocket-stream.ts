@@ -392,8 +392,14 @@ async function handleOpenAIMessage(
               voiceId,
             });
             
-            // Send audio to client as binary
+            // Send audio format metadata before sending audio
             if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(JSON.stringify({
+                type: "audio.format",
+                format: "mp3",
+                size: audioBuffer.length,
+              }));
+              // Send audio to client as binary
               clientWs.send(audioBuffer);
             }
           } catch (error) {

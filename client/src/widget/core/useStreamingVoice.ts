@@ -60,6 +60,10 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const isBufferingRef = useRef(true); // Whether we're still prebuffering
   const scheduledSourcesRef = useRef<AudioBufferSourceNode[]>([]); // Track scheduled sources
   
+  // Audio format tracking (for ElevenLabs MP3 vs OpenAI PCM16)
+  const expectedAudioFormatRef = useRef<"pcm16" | "mp3">("pcm16");
+  const expectedAudioSizeRef = useRef<number>(0);
+  
   // Jitter buffer configuration
   const PREBUFFER_THRESHOLD = 0.35; // Wait for 350ms of audio before starting playback
   const MIN_SCHEDULE_AHEAD = 0.02; // Schedule at least 20ms ahead of current time
@@ -171,6 +175,13 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
         setState(s => ({ ...s, isAISpeaking: false }));
         break;
         
+      case "audio.format":
+        // Server indicates upcoming audio format (for ElevenLabs MP3)
+        console.log("[Narada Stream] Audio format:", msg.format, "size:", msg.size);
+        expectedAudioFormatRef.current = msg.format || "pcm16";
+        expectedAudioSizeRef.current = msg.size || 0;
+        break;
+        
       case "error":
         setState(s => ({ ...s, error: msg.message }));
         onError?.(msg.message);
@@ -180,9 +191,17 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
 
   // Handle incoming audio chunks for playback with jitter buffering
   const handleAudioChunk = useCallback(async (audioData: ArrayBuffer) => {
-    if (!playbackContextRef.current) {
-      playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
-      console.log("[Narada Stream] Created playback AudioContext");
+    // Create or get playback context (use 48000 for MP3, 24000 for PCM16)
+    const isMp3 = expectedAudioFormatRef.current === "mp3";
+    const sampleRate = isMp3 ? 48000 : 24000;
+    
+    if (!playbackContextRef.current || playbackContextRef.current.sampleRate !== sampleRate) {
+      // Close existing context if sample rate changed
+      if (playbackContextRef.current) {
+        playbackContextRef.current.close();
+      }
+      playbackContextRef.current = new AudioContext({ sampleRate });
+      console.log("[Narada Stream] Created playback AudioContext, sampleRate:", sampleRate);
       
       // Create gain node for volume control
       gainNodeRef.current = playbackContextRef.current.createGain();
@@ -203,20 +222,40 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     }
 
     try {
-      // Decode PCM16 to AudioBuffer
-      const int16Array = new Int16Array(audioData);
-      const float32Array = new Float32Array(int16Array.length);
+      let audioBuffer: AudioBuffer;
       
-      for (let i = 0; i < int16Array.length; i++) {
-        float32Array[i] = int16Array[i] / 32768;
-      }
+      if (isMp3) {
+        // Decode MP3 using Web Audio API (for ElevenLabs)
+        console.log("[Narada Stream] Decoding MP3 audio, size:", audioData.byteLength);
+        audioBuffer = await playbackContextRef.current.decodeAudioData(audioData.slice(0));
+        console.log("[Narada Stream] MP3 decoded, duration:", audioBuffer.duration.toFixed(3));
+        // Reset format for next chunk (expect PCM16 by default)
+        expectedAudioFormatRef.current = "pcm16";
+      } else {
+        // Decode PCM16 to AudioBuffer (for OpenAI)
+        const int16Array = new Int16Array(audioData);
+        const float32Array = new Float32Array(int16Array.length);
+        
+        for (let i = 0; i < int16Array.length; i++) {
+          float32Array[i] = int16Array[i] / 32768;
+        }
 
-      const audioBuffer = playbackContextRef.current.createBuffer(1, float32Array.length, 24000);
-      audioBuffer.getChannelData(0).set(float32Array);
+        audioBuffer = playbackContextRef.current.createBuffer(1, float32Array.length, 24000);
+        audioBuffer.getChannelData(0).set(float32Array);
+      }
 
       // Add to queue and track buffered duration
       audioQueueRef.current.push(audioBuffer);
       bufferedDurationRef.current += audioBuffer.duration;
+      
+      // For MP3 (ElevenLabs), skip jitter buffering and play immediately since it's a complete response
+      if (isMp3) {
+        console.log("[Narada Stream] MP3 complete, playing immediately");
+        isBufferingRef.current = false;
+        playbackCursorRef.current = playbackContextRef.current.currentTime + MIN_SCHEDULE_AHEAD;
+        scheduleAllBufferedAudio();
+        return;
+      }
       
       // If still prebuffering, check if we have enough audio to start
       if (isBufferingRef.current) {
@@ -234,6 +273,8 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
       }
     } catch (e) {
       console.error("[Narada Stream] Audio decode error:", e);
+      // Reset format on error
+      expectedAudioFormatRef.current = "pcm16";
     }
   }, []);
 
