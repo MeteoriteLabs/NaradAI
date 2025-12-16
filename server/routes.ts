@@ -484,6 +484,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         widgetDesign: agent.widgetDesign,
         widgetColor: agent.widgetColor,
         autoStart: agent.autoStart,
+        // Browser context capture options
+        capturePageText: agent.capturePageText || false,
+        capturePageStructure: agent.capturePageStructure || false,
+        captureScreenshots: agent.captureScreenshots || false,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

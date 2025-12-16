@@ -33,10 +33,18 @@ function StreamingWidget({ agentId, streamingWebsocketUrl, apiBase, websocketUrl
   // Get agent data from legacy hook (for agent info, flows, lead forms, etc.)
   const legacyVoice = useVoiceAgent({ agentId, websocketUrl, apiBase });
   
+  // Build capture options from agent data (map agent field names to CaptureOptions interface)
+  const captureOptions = legacyVoice.agentData ? {
+    captureText: legacyVoice.agentData.capturePageText || false,
+    captureStructure: legacyVoice.agentData.capturePageStructure || false,
+    captureScreenshot: legacyVoice.agentData.captureScreenshots || false,
+  } : undefined;
+  
   // Use streaming voice hook for voice interaction
   const streamingVoice = useStreamingVoice({
     agentId,
     wsUrl: streamingWebsocketUrl!,
+    captureOptions,
     onTranscript: (text: string, isFinal: boolean) => {
       console.log('[Narada Stream] Transcript:', text, isFinal ? '(final)' : '(partial)');
     },

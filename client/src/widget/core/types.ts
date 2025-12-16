@@ -25,6 +25,10 @@ export interface AgentConfig {
   widgetDesign?: WidgetDesign;
   widgetColor?: string;
   autoStart?: boolean;
+  // Browser context capture options
+  capturePageText?: boolean;
+  capturePageStructure?: boolean;
+  captureScreenshots?: boolean;
 }
 
 export interface WidgetDesignProps {
