@@ -55,6 +55,10 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+// Browser context capture options
+export const BROWSER_CONTEXT_OPTIONS = ["text", "structure", "screenshot"] as const;
+export type BrowserContextOption = typeof BROWSER_CONTEXT_OPTIONS[number];
+
 // Agents table
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -67,6 +71,11 @@ export const agents = pgTable("agents", {
   widgetDesign: text("widget_design").default("voice-bar"), // "voice-bar" | "floating-bubble" | "corner-card"
   widgetColor: text("widget_color").default("#8b5cf6"), // Primary color for widget
   autoStart: boolean("auto_start").default(false), // Start voice bot automatically on page load
+  // Browser context settings
+  targetUrl: text("target_url"), // Website URL where widget is deployed
+  capturePageText: boolean("capture_page_text").default(false), // Capture visible text content
+  capturePageStructure: boolean("capture_page_structure").default(false), // Capture DOM structure/interactive elements
+  captureScreenshots: boolean("capture_screenshots").default(false), // Capture screenshots (requires GPT-4 Vision)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
