@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createWorkletBlobUrl } from "./audio-processor.worklet";
+import { captureFullPageContext, type CaptureOptions, type PageContext } from "./pageContext";
 
 interface StreamingVoiceState {
   isStreaming: boolean;
@@ -16,13 +17,14 @@ interface StreamingVoiceState {
 interface UseStreamingVoiceOptions {
   agentId: string;
   wsUrl: string;
+  captureOptions?: CaptureOptions;
   onTranscript?: (text: string, isFinal: boolean) => void;
   onAIResponse?: (text: string) => void;
   onError?: (error: string) => void;
 }
 
 export function useStreamingVoice(options: UseStreamingVoiceOptions) {
-  const { agentId, wsUrl, onTranscript, onAIResponse, onError } = options;
+  const { agentId, wsUrl, captureOptions, onTranscript, onAIResponse, onError } = options;
 
   const [state, setState] = useState<StreamingVoiceState>({
     isStreaming: false,
@@ -69,7 +71,7 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
   const MIN_SCHEDULE_AHEAD = 0.02; // Schedule at least 20ms ahead of current time
 
   // Connect to WebSocket
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -78,14 +80,35 @@ export function useStreamingVoice(options: UseStreamingVoiceOptions) {
     const ws = new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       console.log("[Narada Stream] WebSocket connected");
       setState(s => ({ ...s, isConnected: true, error: null }));
       
-      // Send session init
+      // Capture page context if options are set
+      let pageContext: PageContext | null = null;
+      if (captureOptions && (captureOptions.captureText || captureOptions.captureStructure || captureOptions.captureScreenshot)) {
+        console.log("[Narada Stream] Capturing page context...");
+        try {
+          pageContext = await captureFullPageContext(captureOptions);
+          console.log("[Narada Stream] Page context captured:", {
+            hasText: !!pageContext.text,
+            hasStructure: !!pageContext.structure,
+            hasScreenshot: !!pageContext.screenshot,
+          });
+        } catch (error) {
+          console.error("[Narada Stream] Failed to capture page context:", error);
+        }
+      }
+      
+      // Send session init with page context
       ws.send(JSON.stringify({
         type: "session.init",
         agentId,
+        context: {
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+        },
+        pageContext,
       }));
     };
 

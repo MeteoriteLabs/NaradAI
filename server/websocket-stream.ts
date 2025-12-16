@@ -5,6 +5,32 @@ import { synthesizeWithElevenLabs } from "./elevenlabs";
 
 const OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17";
 
+interface PageContext {
+  url: string;
+  title: string;
+  userAgent: string;
+  timestamp: string;
+  text?: {
+    title: string;
+    url: string;
+    headings: string[];
+    paragraphs: string[];
+    mainContent: string;
+  };
+  structure?: {
+    buttons: { text: string; id?: string; class?: string }[];
+    links: { text: string; href: string }[];
+    forms: { id?: string; fields: string[] }[];
+    inputs: { type: string; placeholder?: string; label?: string }[];
+    navigation: string[];
+  };
+  screenshot?: {
+    dataUrl: string;
+    width: number;
+    height: number;
+  };
+}
+
 interface StreamingClient extends WebSocket {
   agentId?: string;
   openaiWs?: WebSocket;
@@ -14,6 +40,7 @@ interface StreamingClient extends WebSocket {
     url?: string;
     userAgent?: string;
   };
+  pageContext?: PageContext;
 }
 
 export function setupStreamingWebSocket(server: Server) {
@@ -150,11 +177,19 @@ async function handleClientMessage(clientWs: StreamingClient, message: any) {
 }
 
 async function initSession(clientWs: StreamingClient, message: any) {
-  const { agentId, context } = message;
+  const { agentId, context, pageContext } = message;
   clientWs.agentId = agentId;
   clientWs.context = context;
+  clientWs.pageContext = pageContext;
 
   console.log("[Stream] Initializing session for agent:", agentId);
+  if (pageContext) {
+    console.log("[Stream] Page context received:", {
+      hasText: !!pageContext.text,
+      hasStructure: !!pageContext.structure,
+      hasScreenshot: !!pageContext.screenshot,
+    });
+  }
 
   // Get agent info
   const agent = await storage.getAgent(agentId);
@@ -173,8 +208,8 @@ async function initSession(clientWs: StreamingClient, message: any) {
   const knowledge = await storage.getKnowledgeItems(agentId);
   const flows = await storage.getFlows(agentId);
 
-  // Build system instructions
-  const systemInstructions = buildSystemInstructions(agent, knowledge, flows, context);
+  // Build system instructions with page context
+  const systemInstructions = buildSystemInstructions(agent, knowledge, flows, context, pageContext);
 
   // Connect to OpenAI Realtime API
   const apiKey = process.env.OPENAI_API_KEY;
@@ -564,7 +599,8 @@ function buildSystemInstructions(
   agent: any,
   knowledge: any[],
   flows: any[],
-  context?: any
+  context?: any,
+  pageContext?: PageContext
 ): string {
   let instructions = `You are ${agent.name}, a helpful voice AI assistant.`;
   
@@ -591,6 +627,46 @@ function buildSystemInstructions(
 
   if (context?.url) {
     instructions += `\n\nUser is currently on: ${context.url}`;
+  }
+
+  // Add page context if available
+  if (pageContext) {
+    instructions += "\n\n=== CURRENT PAGE CONTEXT ===";
+    instructions += `\nPage URL: ${pageContext.url}`;
+    instructions += `\nPage Title: ${pageContext.title}`;
+    
+    if (pageContext.text) {
+      instructions += "\n\n--- Page Content ---";
+      if (pageContext.text.headings && pageContext.text.headings.length > 0) {
+        instructions += `\nHeadings: ${pageContext.text.headings.slice(0, 10).join(' | ')}`;
+      }
+      if (pageContext.text.mainContent) {
+        const contentSummary = pageContext.text.mainContent.substring(0, 1500);
+        instructions += `\nMain Content: ${contentSummary}`;
+      }
+    }
+    
+    if (pageContext.structure) {
+      instructions += "\n\n--- Interactive Elements ---";
+      if (pageContext.structure.buttons && pageContext.structure.buttons.length > 0) {
+        instructions += `\nButtons available: ${pageContext.structure.buttons.slice(0, 15).map(b => b.text).join(', ')}`;
+      }
+      if (pageContext.structure.navigation && pageContext.structure.navigation.length > 0) {
+        instructions += `\nNavigation items: ${pageContext.structure.navigation.slice(0, 15).join(', ')}`;
+      }
+      if (pageContext.structure.forms && pageContext.structure.forms.length > 0) {
+        instructions += `\nForms: ${pageContext.structure.forms.length} form(s) with fields: ${pageContext.structure.forms.slice(0, 3).map(f => f.fields.join(', ')).join(' | ')}`;
+      }
+      if (pageContext.structure.inputs && pageContext.structure.inputs.length > 0) {
+        instructions += `\nInput fields: ${pageContext.structure.inputs.slice(0, 10).map(i => i.label || i.placeholder || i.type).join(', ')}`;
+      }
+      if (pageContext.structure.links && pageContext.structure.links.length > 0) {
+        instructions += `\nKey links: ${pageContext.structure.links.slice(0, 10).map(l => l.text).join(', ')}`;
+      }
+    }
+    
+    instructions += "\n=== END PAGE CONTEXT ===";
+    instructions += "\n\nUse this page context to help guide the user. You can see what's on their screen - buttons, forms, navigation, and content. Reference specific elements when helping them navigate or find information.";
   }
 
   instructions += "\n\nYou can capture leads by calling capture_lead when users want to connect or get more information.";

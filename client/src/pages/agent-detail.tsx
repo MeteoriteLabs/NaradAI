@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code, CheckCircle2, XCircle, AlertCircle, Loader2, Globe, ExternalLink, Palette } from "lucide-react";
+import { ArrowLeft, Copy, Settings, BookOpen, Tag, GitBranch, BarChart3, Code, CheckCircle2, XCircle, AlertCircle, Loader2, Globe, ExternalLink, Palette, Eye, Layout, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,10 @@ import { WidgetPreviewSection } from "@/components/agent-sections/widget-preview
 const agentFormSchema = insertAgentSchema.extend({
   name: z.string().min(1, "Name is required"),
   autoStart: z.boolean().optional(),
+  targetUrl: z.string().optional(),
+  capturePageText: z.boolean().optional(),
+  capturePageStructure: z.boolean().optional(),
+  captureScreenshots: z.boolean().optional(),
 });
 
 type AgentFormValues = z.infer<typeof agentFormSchema>;
@@ -291,6 +295,10 @@ export default function AgentDetailPage() {
       voiceStyle: "alloy",
       elevenLabsVoiceId: "",
       autoStart: false,
+      targetUrl: "",
+      capturePageText: false,
+      capturePageStructure: false,
+      captureScreenshots: false,
     },
     values: agent ? {
       name: agent.name,
@@ -299,6 +307,10 @@ export default function AgentDetailPage() {
       voiceStyle: agent.voiceStyle || "alloy",
       elevenLabsVoiceId: agent.elevenLabsVoiceId || "",
       autoStart: agent.autoStart || false,
+      targetUrl: agent.targetUrl || "",
+      capturePageText: agent.capturePageText || false,
+      capturePageStructure: agent.capturePageStructure || false,
+      captureScreenshots: agent.captureScreenshots || false,
     } : undefined,
   });
 
@@ -600,6 +612,115 @@ export default function AgentDetailPage() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      Browser Context Awareness
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Enable your AI to see and understand what users are looking at on your website. This gives the agent contextual awareness to provide better guidance.
+                    </p>
+
+                    <FormField
+                      control={form.control}
+                      name="targetUrl"
+                      render={({ field }) => (
+                        <FormItem className="mb-4">
+                          <FormLabel>Target Website URL</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://yourwebsite.com"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-target-url"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            The website URL where the widget is deployed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="capturePageText"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="flex items-start gap-3">
+                              <Eye className="w-5 h-5 mt-0.5 text-muted-foreground" />
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Capture Page Text</FormLabel>
+                                <FormDescription>
+                                  Let the AI read headings, paragraphs, and visible text content on the page
+                                </FormDescription>
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value || false}
+                                onCheckedChange={field.onChange}
+                                data-testid="switch-capture-text"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="capturePageStructure"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="flex items-start gap-3">
+                              <Layout className="w-5 h-5 mt-0.5 text-muted-foreground" />
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Capture Page Structure</FormLabel>
+                                <FormDescription>
+                                  Let the AI understand buttons, forms, navigation, and interactive elements
+                                </FormDescription>
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value || false}
+                                onCheckedChange={field.onChange}
+                                data-testid="switch-capture-structure"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="captureScreenshots"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="flex items-start gap-3">
+                              <Camera className="w-5 h-5 mt-0.5 text-muted-foreground" />
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Capture Screenshots</FormLabel>
+                                <FormDescription>
+                                  Take screenshots for visual AI understanding (uses GPT-4 Vision, may increase costs)
+                                </FormDescription>
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value || false}
+                                onCheckedChange={field.onChange}
+                                data-testid="switch-capture-screenshots"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"
