@@ -1,127 +1,38 @@
-<div align="center">
+# NaradAI
 
-# 🎙️ NaradAI
+NaradAI is an open-source **voice-guided website experience platform**. It combines a control-plane dashboard for configuring AI agents with an embeddable widget that can be added to any website.
 
-**Voice-guided website experiences for products and services**
+## What it does
 
-Turn static pages into narrated, interactive customer journeys.
+- Create and manage AI agents with custom persona + voice style.
+- Maintain a Q&A knowledge base per agent.
+- Track user behavior with event tags.
+- Build guided tours/flows with ordered steps.
+- Capture leads and view conversation analytics.
+- Embed a floating, Shadow DOM-isolated widget using a script tag.
 
-![Open Source](https://img.shields.io/badge/Open%20Source-Yes-22c55e?style=for-the-badge)
-![React](https://img.shields.io/badge/Frontend-React%2018-61dafb?style=for-the-badge)
-![Express](https://img.shields.io/badge/Backend-Express-111827?style=for-the-badge)
-![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge)
+## Architecture overview
 
-</div>
+This repository currently includes:
 
----
+1. **Primary app runtime (TypeScript / Node.js)**
+   - React + Vite dashboard (`client/`)
+   - Express API + WebSocket server (`server/`)
+   - Drizzle + PostgreSQL schema (`shared/schema.ts`)
+   - `/embed.js` endpoint served by the app for external websites
 
-## 🌟 Overview
+2. **Python FastAPI backend (legacy/alternate implementation)**
+   - Separate API scaffold in `backend/`
+   - Useful for experimentation, not the default runtime path used by the dashboard app in this repo
 
-NaradAI is an open-source platform that helps websites **narrate products and services** in a guided, conversational way.
+## Tech stack
 
-With NaradAI, teams can:
-- Configure AI agents with persona + behavior.
-- Answer user questions from curated knowledge.
-- Guide visitors step-by-step through key pages/features.
-- Capture leads during live interaction.
-- Embed the assistant on external websites with one script.
+- **Frontend**: React 18, TypeScript, Vite, Wouter, TanStack Query, Tailwind CSS, shadcn/ui
+- **Backend**: Express, WebSocket (`ws`), OpenAI SDK
+- **Database**: PostgreSQL + Drizzle ORM
+- **Validation**: Zod + drizzle-zod
 
----
-
-## 📚 Table of Contents
-
-- [🧩 Core Use Cases](#-core-use-cases)
-- [🧭 How narration works on a website](#-how-narration-works-on-a-website)
-- [🔌 AI & voice provider flexibility](#-ai--voice-provider-flexibility)
-- [🏗️ Architecture](#️-architecture)
-- [🧱 Tech Stack](#-tech-stack)
-- [🗂️ Repository Structure](#️-repository-structure)
-- [✅ Prerequisites](#-prerequisites)
-- [🔐 Environment Variables](#-environment-variables)
-- [🚀 Quick Start](#-quick-start)
-- [🌐 Embed on Any Website](#-embed-on-any-website)
-- [🛠️ NPM Scripts](#️-npm-scripts)
-- [📡 API Surface](#-api-surface)
-- [🐍 Optional Python Backend](#-optional-python-backend)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-
----
-
-## 🧩 Core Use Cases
-
-| Use Case | What NaradAI Does |
-|---|---|
-| Product walkthrough | Narrates features, pricing, and onboarding flows |
-| Service explanation | Explains process and offerings step-by-step |
-| Guided conversion | Helps users find the right section and actions |
-| Lead capture | Collects contact details during conversation |
-| Contextual support | Responds based on current page and interaction context |
-
----
-
-## 🧭 How narration works on a website
-
-NaradAI enables a practical narration flow for real websites:
-
-1. **Create an AI agent in dashboard**
-   - Define agent identity, persona, and voice behavior.
-   - Add Q&A knowledge about your product/service.
-
-2. **Define journeys + event tags**
-   - Build guided flows (multi-step walkthroughs).
-   - Track meaningful page elements and behaviors.
-
-3. **Embed NaradAI script**
-   - Add a script tag to your website.
-   - Widget mounts inside Shadow DOM for style isolation.
-
-4. **Visitor starts conversation**
-   - Assistant can greet, answer questions, narrate content, and trigger guided steps.
-   - Conversation can end in lead capture + analytics updates.
-
-> ✅ Outcome: NaradAI can narrate your product/service directly inside your website experience.
-
----
-
-## 🔌 AI & voice provider flexibility
-
-NaradAI is designed to support multiple AI/voice stacks.
-
-- **Current repo implementation:** OpenAI SDK (chat + audio transcription paths).
-- **Platform-flexible direction:** can be integrated with providers such as **ElevenLabs** and other TTS/STT/LLM services depending on your architecture and preferences.
-
-This allows teams to optimize for voice quality, latency, region, and pricing.
-
----
-
-## 🏗️ Architecture
-
-### Primary runtime (default in this repo)
-
-- `client/` → React + Vite dashboard + widget UI
-- `server/` → Express REST API + WebSocket server + `/embed.js`
-- `shared/` → Drizzle schema + shared TypeScript types
-
-### Alternate path
-
-- `backend/` → FastAPI implementation (optional/legacy path for experimentation)
-
----
-
-## 🧱 Tech Stack
-
-| Layer | Tools |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Wouter, TanStack Query, Tailwind, shadcn/ui |
-| Backend | Express, ws (WebSocket), OpenAI SDK |
-| Data | PostgreSQL, Drizzle ORM |
-| Validation | Zod, drizzle-zod |
-
----
-
-## 🗂️ Repository Structure
+## Monorepo structure
 
 ```text
 .
@@ -133,20 +44,16 @@ This allows teams to optimize for voice quality, latency, region, and pricing.
 └── start-backend.sh      # Helper script for Python backend
 ```
 
----
+## Prerequisites
 
-## ✅ Prerequisites
+- **Node.js 20+**
+- **npm 10+**
+- **PostgreSQL** database
+- **OpenAI API key** (for AI chat/audio features)
 
-- Node.js 20+
-- npm 10+
-- PostgreSQL
-- OpenAI API key (required by current runtime implementation)
+## Environment variables
 
----
-
-## 🔐 Environment Variables
-
-Create `.env` in repo root:
+Create a `.env` file in the repository root for the Node runtime:
 
 ```bash
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
@@ -154,11 +61,9 @@ OPENAI_API_KEY=sk-...
 PORT=5000
 ```
 
-For `backend/` FastAPI path, `DATABASE_URL` is also required.
+For the Python backend (`backend/`), `DATABASE_URL` is also required.
 
----
-
-## 🚀 Quick Start
+## Quick start (default: Node/TypeScript runtime)
 
 ```bash
 npm install
@@ -166,20 +71,18 @@ npm run db:push
 npm run dev
 ```
 
-App URL: `http://localhost:5000` (or your configured `PORT`).
+Then open the app at `http://localhost:5000` (or your configured `PORT`).
 
-### Production
+### Production build
 
 ```bash
 npm run build
 npm run start
 ```
 
----
+## Embedding the widget
 
-## 🌐 Embed on Any Website
-
-NaradAI serves an embeddable script at `/embed.js`.
+The app serves an embeddable script at `/embed.js`.
 
 ```html
 <script
@@ -190,25 +93,21 @@ NaradAI serves an embeddable script at `/embed.js`.
 ></script>
 ```
 
-**Attributes:**
-- `data-agent-id` (**required**) – the agent to load.
-- `data-api-base` (optional) – set when API/WebSocket live on another origin.
+Notes:
+- `data-agent-id` is required.
+- `data-api-base` is optional and useful when API/WebSocket are hosted on a different origin.
 
----
+## Available npm scripts
 
-## 🛠️ NPM Scripts
+- `npm run dev` — run development server (Express + Vite middleware).
+- `npm run build` — build client and bundle server into `dist/`.
+- `npm run start` — start the production bundle.
+- `npm run check` — run TypeScript type checking.
+- `npm run db:push` — push Drizzle schema changes to PostgreSQL.
 
-| Script | Purpose |
-|---|---|
-| `npm run dev` | Start development server (Express + Vite middleware) |
-| `npm run build` | Build client and bundle server into `dist/` |
-| `npm run start` | Start production bundle |
-| `npm run check` | Run TypeScript checks |
-| `npm run db:push` | Push Drizzle schema to PostgreSQL |
+## API surface (Node runtime)
 
----
-
-## 📡 API Surface
+Common routes:
 
 - `POST /api/agents`, `GET /api/agents`, `GET/PUT/DELETE /api/agents/:id`
 - `POST/GET /api/agents/:agentId/knowledge`, `DELETE /api/knowledge/:id`
@@ -221,9 +120,9 @@ NaradAI serves an embeddable script at `/embed.js`.
 - `GET /embed.js`
 - `WS /ws`
 
----
+## Python backend (optional)
 
-## 🐍 Optional Python Backend
+If you want to run the FastAPI backend implementation:
 
 ```bash
 cd backend
@@ -231,19 +130,15 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 3001
 ```
 
----
+## Contributing
 
-## 🤝 Contributing
-
-1. Fork this repository.
-2. Create a focused feature branch.
-3. Run checks before opening PR:
+1. Fork the repo and create a feature branch.
+2. Keep changes focused and include tests/checks when possible.
+3. Run:
    - `npm run check`
-   - other relevant tests/checks
-4. Open a PR with clear behavior changes.
+   - any relevant project-specific tests
+4. Open a PR with a clear description of behavior changes.
 
----
-
-## 📄 License
+## License
 
 MIT (see `package.json`).
